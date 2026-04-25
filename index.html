@@ -542,17 +542,17 @@
 
       <div class="stats-grid">
         <div class="stat-cell"><div class="stat-lbl">Score</div><div class="stat-val" id="pts">0</div></div>
-        <div class="stat-cell"><div class="stat-lbl">Captured</div><div class="stat-val" id="col">0</div></div>
-        <div class="stat-cell"><div class="stat-lbl">Escaped</div><div class="stat-val" id="fug">0</div></div>
-        <div class="stat-cell"><div class="stat-lbl">Damage</div><div class="stat-val" id="dmg">0</div></div>
+        <div class="stat-cell"><div class="stat-lbl">Capturado</div><div class="stat-val" id="col">0</div></div>
+        <div class="stat-cell"><div class="stat-lbl">Escapou</div><div class="stat-val" id="fug">0</div></div>
+        <div class="stat-cell"><div class="stat-lbl">Dano</div><div class="stat-val" id="dmg">0</div></div>
       </div>
 
       <div class="section">
-        <div class="sec-label">🧠 SYNAPTIC NETWORK</div>
+        <div class="sec-label">🧠 REDE SINÁPTICA</div>
         <div id="neural-viz">
           <svg id="neural-svg"></svg>
           <div class="neural-layer">
-            <div class="layer-label">INPUT LAYER</div>
+            <div class="layer-label">CAMADA DE ENTRADA</div>
             <div class="neuron-row">
               <span class="neuron-label">H°</span>
               <div class="neuron" id="n-h" data-id="0">H</div>
@@ -576,14 +576,14 @@
           </div>
 
           <div class="neural-layer">
-            <div class="layer-label">OUTPUT LAYER — FIRING</div>
+            <div class="layer-label">CAMADA DE SAÍDA — DISPARO</div>
             <div id="neural-output"></div>
           </div>
         </div>
       </div>
 
       <div class="section">
-        <div class="sec-label">📡 TARGET ANALYSIS (HSV)</div>
+        <div class="sec-label">📡 ANÁLISE DO ALVO (HSV)</div>
         <div id="near-none" class="none-msg">NO TARGET IN RANGE</div>
         <div id="near-info" style="display:none">
           <div class="hsv-row">
@@ -596,25 +596,25 @@
       </div>
 
       <div class="section">
-        <div class="sec-label">🎯 ACTIVATION SCORES</div>
+        <div class="sec-label">🎯 NÍVEIS DE ATIVAÇÃO</div>
         <div id="scores-panel"></div>
       </div>
 
       <div class="section">
-        <div class="sec-label">⚡ DECISION MATRIX</div>
+        <div class="sec-label">⚡ MATRIZ DE DECISÃO</div>
         <div class="decision-box" id="dec-box">
-          <div class="dec-name" id="dec-name">SCANNING</div>
-          <div class="dec-sub" id="dec-sub">NO TARGETS DETECTED</div>
+          <div class="dec-name" id="dec-name">ESCANEANDO</div>
+          <div class="dec-sub" id="dec-sub">NENHUM ALVO DETECTADO</div>
         </div>
         <div class="conf-row">
-          <span class="conf-label">CONFIDENCE</span>
+          <span class="conf-label">CONFIANÇA</span>
           <span class="conf-pct" id="conf-pct">—</span>
         </div>
         <div class="bar-bg"><div class="bar-fill" id="conf-bar" style="width:0%;background:#00ff88"></div></div>
       </div>
 
       <div class="log-header">
-        <span class="sec-label" style="margin:0">📊 EVENT LOG</span>
+        <span class="sec-label" style="margin:0">📊 REGISTRO DE EVENTOS</span>
         <span class="log-clear" id="clearLog">clear</span>
       </div>
       <div class="log-wrap" id="log"></div>
@@ -728,14 +728,14 @@ function spawnObject(){
   let x,y,tries=0;
   do{x=rand(OBJ_R+14,W-OBJ_R-14);y=rand(OBJ_R+14,H-OBJ_R-14);tries++;}
   while(robot&&dist({x,y},robot)<130&&tries<20);
-  return{x,y,vx:rand(-0.7,0.7),vy:rand(-0.7,0.7),rule,pt:0,born:Date.now(),ttl:rand(7000,13000)};
+  return{x,y,vx:rand(-1.5,1.5),vy:rand(-1.5,1.5),rule,pt:0,born:Date.now(),ttl:rand(4000,8000)};
 }
 
 function reset(){
   resizeCanvas();
   robot={x:W/2,y:H/2,vx:0,vy:0,angle:0,target:null,state:'idle',bt:0};
   objects=[];score=0;collected=0;fled_c=0;dmg=0;tick=0;lastNear=null;lastScores=[];
-  for(let i=0;i<5;i++)objects.push(spawnObject());
+  for(let i=0;i<8;i++)objects.push(spawnObject());
   document.getElementById('log').innerHTML='';
   updateUI();
 }
@@ -886,8 +886,8 @@ function updateUI(){
     document.getElementById('conf-bar').style.width=conf+'%';
     document.getElementById('conf-bar').style.background=r.flee?'#ff0055':'#00ff88';
   }else{
-    document.getElementById('dec-name').textContent='🔍 SCANNING';
-    document.getElementById('dec-sub').textContent='NO TARGETS DETECTED';
+    document.getElementById('dec-name').textContent='🔍 ESCANEANDO';
+    document.getElementById('dec-sub').textContent='NENHUM ALVO DETECTADO';
     document.getElementById('dec-box').style.background='rgba(0, 255, 136, 0.05)';
     document.getElementById('conf-pct').textContent='—';
     document.getElementById('conf-bar').style.width='0%';
@@ -907,7 +907,7 @@ function vision(){
 }
 
 function moveRobot(){
-  const AC=0.2,FR=0.87,MV=2.8;
+  const AC=0.35,FR=0.90,MV=3.8;
   if(robot.state==='idle'){robot.vx+=rand(-0.25,0.25);robot.vy+=rand(-0.25,0.25);}
   else if(robot.state==='chase'&&robot.target){
     const dx=robot.target.x-robot.x,dy=robot.target.y-robot.y,d=Math.hypot(dx,dy)||1;
@@ -941,13 +941,13 @@ function collide(){
       score+=o.rule.pts;
       glitchEffect = 0.3;
       if(o.rule.flee){dmg++;addLog(`[COLLISION] ${o.rule.name} · ${o.rule.pts} pts`,'#ff0055');}
-      else{collected++;addLog(`[CAPTURED] ${o.rule.name} +${o.rule.pts} pts`,'#00ff88');}
+      else{collected++;addLog(`[CAPTURADO] ${o.rule.name} +${o.rule.pts} pts`,'#00ff88');}
       return false;
     }
     if(exp){fled_c++;addLog(`[EXPIRED] ${o.rule.name}`,'#00664d');return false;}
     return true;
   });
-  while(objects.length<5)objects.push(spawnObject());
+  while(objects.length<8)objects.push(spawnObject());
 }
 
 function drawCyberpunkRobot(rx, ry){
@@ -1055,13 +1055,38 @@ function draw(){
   for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
   // Círculo de detecção
+  // Radar base
   ctx.beginPath();
   ctx.arc(robot.x, robot.y, DETECT_R, 0, Math.PI*2);
   ctx.strokeStyle = 'rgba(0,255,136,0.15)';
   ctx.lineWidth = 1;
-  ctx.setLineDash([6,4]);
   ctx.stroke();
-  ctx.setLineDash([]);
+  
+  // Linha giratória (efeito radar)
+  const radarAngle = (tick * 0.05) % (Math.PI * 2);
+  
+  ctx.beginPath();
+  ctx.moveTo(robot.x, robot.y);
+  ctx.lineTo(
+    robot.x + Math.cos(radarAngle) * DETECT_R,
+    robot.y + Math.sin(radarAngle) * DETECT_R
+  );
+  ctx.strokeStyle = 'rgba(0,255,136,0.6)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Fade do radar (cone)
+  const grad = ctx.createRadialGradient(
+    robot.x, robot.y, 0,
+    robot.x, robot.y, DETECT_R
+  );
+  grad.addColorStop(0, 'rgba(0,255,136,0.2)');
+  grad.addColorStop(1, 'rgba(0,255,136,0)');
+  
+  ctx.beginPath();
+  ctx.arc(robot.x, robot.y, DETECT_R, radarAngle - 0.2, radarAngle + 0.2);
+  ctx.fillStyle = grad;
+  ctx.fill();
 
   // Objetos
   for(const o of objects){
