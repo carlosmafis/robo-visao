@@ -121,12 +121,21 @@
 
     /* ── MODO PROFESSOR ── */
     #explain-box {
-      font-size:10px; color:#00cc66; line-height:1.6;
-      background:rgba(0,255,136,.05); border:1px solid rgba(0,255,136,.2);
+      font-size:10px; color:#00664d; line-height:1.7;
+      background:rgba(0,255,136,.03); border:1px solid rgba(0,255,136,.15);
       border-radius:2px; padding:6px 8px; font-weight:600;
-      white-space:pre-line;
+      white-space:pre-line; transition: all .3s ease;
     }
-    #explain-box.active { color:#00ff88; border-color:rgba(0,255,136,.5); box-shadow:inset 0 0 8px rgba(0,255,136,.1); }
+    #explain-box.active {
+      color:#00ff88; border-color:#00ff88;
+      background:rgba(0,255,136,.08);
+      box-shadow:0 0 12px rgba(0,255,136,.3), inset 0 0 10px rgba(0,255,136,.1);
+    }
+    /* seção do modo professor pisca quando ativo */
+    .section-teacher.on {
+      border-left: 3px solid #00ff88;
+      background: rgba(0,255,136,.04);
+    }
 
     /* ── PESOS ADAPTATIVOS ── */
     #weights-wrap { display:flex; gap:4px; }
@@ -269,9 +278,9 @@
       </div>
 
       <!-- MODO PROFESSOR -->
-      <div class="section">
-        <div class="sec-label">🎓 Modo professor <span style="color:#00664d;font-size:8px">(clique no 🎓 para ativar)</span></div>
-        <div id="explain-box">DESATIVADO — clique em 🎓 para explicações ao vivo</div>
+      <div class="section section-teacher" id="section-teacher">
+        <div class="sec-label">🎓 Modo professor <span id="teacher-status" style="color:#00664d;font-size:8px">● DESATIVADO</span></div>
+        <div id="explain-box">Clique em 🎓 na barra superior para ativar.\nQuando ativo, mostra o raciocínio completo da IA em tempo real.</div>
       </div>
 
       <!-- DECISÃO -->
@@ -838,13 +847,39 @@ function drawHUD() {
   ctx.fillText(`W: [${adaptiveWeights.map(w=>w.toFixed(1)).join(' ')}]`, 8, 38);
 
   if (explainMode && robot.target) {
-    ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    // Linha amarela de rastreamento ao alvo
+    ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
     ctx.beginPath(); ctx.moveTo(robot.x, robot.y); ctx.lineTo(robot.target.x, robot.target.y); ctx.stroke();
     ctx.setLineDash([]);
-  } else if (lastNear && !lastNear.rule.flee) {
-    ctx.strokeStyle = 'rgba(0,255,136,.2)'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.moveTo(robot.x, robot.y); ctx.lineTo(lastNear.x, lastNear.y); ctx.stroke();
-    ctx.setLineDash([]);
+
+    // Etiqueta flutuante sobre o alvo
+    const tx = robot.target.x, ty = robot.target.y - OBJ_R - 30;
+    const r  = robot.target.rule;
+    const label = `${r.flee ? '⚠ FUGIR' : '✓ CAPTURAR'} · ${r.pts > 0 ? '+' : ''}${r.pts}`;
+    ctx.font = 'bold 10px JetBrains Mono';
+    const tw = ctx.measureText(label).width + 12;
+    ctx.fillStyle = r.flee ? 'rgba(255,0,85,.85)' : 'rgba(0,255,136,.85)';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(tx - tw/2, ty - 10, tw, 18, 3) : ctx.rect(tx - tw/2, ty - 10, tw, 18);
+    ctx.fill();
+    ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, tx, ty);
+
+    // Badge "PROFESSOR" no canto superior direito da arena
+    ctx.fillStyle = 'rgba(0,255,136,.9)';
+    ctx.font = 'bold 10px JetBrains Mono';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+    const badge = '🎓 MODO PROFESSOR ATIVO';
+    const bw = ctx.measureText(badge).width + 16;
+    ctx.fillStyle = 'rgba(0,40,20,.85)';
+    ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(W - bw - 8, 6, bw, 20, 3) : ctx.rect(W - bw - 8, 6, bw, 20);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#00ff88';
+    ctx.fillText(badge, W - 8, 10);
+  } else if (!explainMode) {
+    // nada extra
   }
 }
 
@@ -924,7 +959,19 @@ function cycleSpeed() {
 }
 function toggleTeacher() {
   explainMode = !explainMode;
-  document.getElementById('btnTeacher').classList.toggle('active-mode', explainMode);
+  const btn    = document.getElementById('btnTeacher');
+  const sec    = document.getElementById('section-teacher');
+  const status = document.getElementById('teacher-status');
+  btn.classList.toggle('active-mode', explainMode);
+  sec.classList.toggle('on', explainMode);
+  if (explainMode) {
+    status.style.color = '#00ff88';
+    status.textContent = '● ATIVO';
+    sec.scrollIntoView({ behavior:'smooth', block:'center' });
+  } else {
+    status.style.color = '#00664d';
+    status.textContent = '● DESATIVADO';
+  }
   updateUI();
 }
 
