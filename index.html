@@ -803,35 +803,89 @@ function collide() {
 
 // ── DRAW ──────────────────────────────────────────────────────────────────
 function drawRobot(rx, ry) {
-  ctx.save(); ctx.translate(rx, ry); ctx.rotate(robot.angle);
+  ctx.save();
+  ctx.translate(rx, ry);
+  ctx.rotate(robot.angle);
 
-  // Aura
-  ctx.beginPath(); ctx.arc(0,0,ROBOT_R+4,0,Math.PI*2);
-  ctx.fillStyle = robot.state==='chase' ? 'rgba(0,255,136,.2)' : robot.state==='flee' ? 'rgba(255,0,85,.2)' : 'rgba(0,136,255,.15)';
+  // ===== COR BASE =====
+  const mainColor = robot.state==='chase' ? '#00ff88' :
+                    robot.state==='flee'  ? '#ff0055' :
+                                            '#0088ff';
+
+  // ===== AURA =====
+  ctx.beginPath();
+  ctx.arc(0,0,ROBOT_R+6,0,Math.PI*2);
+  ctx.fillStyle = mainColor + '22';
   ctx.fill();
 
-  // Corpo
-  ctx.beginPath(); ctx.arc(0,0,ROBOT_R,0,Math.PI*2);
-  ctx.fillStyle   = robot.state==='chase' ? 'rgba(0,255,136,.3)' : robot.state==='flee' ? 'rgba(255,0,85,.3)' : 'rgba(0,136,255,.2)';
+  // ===== CORPO (BASE) =====
+  ctx.fillStyle = '#021';
+  ctx.beginPath();
+  ctx.roundRect(-12, -10, 24, 20, 4);
   ctx.fill();
-  ctx.strokeStyle = robot.state==='chase' ? '#00ff88' : robot.state==='flee' ? '#ff0055' : '#0088ff';
-  ctx.lineWidth   = 2; ctx.stroke();
 
-  // Sensor
-  ctx.beginPath(); ctx.moveTo(ROBOT_R-2,0); ctx.lineTo(ROBOT_R+7,0);
-  ctx.strokeStyle = robot.state==='chase' ? '#00ff88' : robot.state==='flee' ? '#ff0055' : '#0088ff';
-  ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.strokeStyle = mainColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
-  // Olhos
-  if ((robot.bt % 28) < 22) {
-    ctx.beginPath(); ctx.arc(-4,-5,2.5,0,Math.PI*2); ctx.arc(4,-5,2.5,0,Math.PI*2);
-    ctx.fillStyle = robot.state==='flee' ? '#ffff00' : '#00ff88'; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 0.5; ctx.stroke();
+  // ===== VISOR =====
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.roundRect(-8, -6, 16, 8, 2);
+  ctx.fill();
+
+  // brilho visor
+  const grad = ctx.createLinearGradient(-8, -6, 8, 2);
+  grad.addColorStop(0, mainColor);
+  grad.addColorStop(1, '#003');
+  ctx.fillStyle = grad;
+  ctx.fillRect(-8, -6, 16, 8);
+
+  // ===== OLHOS DIGITAIS =====
+  const blink = (robot.bt % 40) < 32;
+
+  if (blink) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(-6, -4, 3, 3);
+    ctx.fillRect(3, -4, 3, 3);
+
+    ctx.fillStyle = '#0f0';
+    ctx.fillRect(-5, -3, 1.5, 1.5);
+    ctx.fillRect(4, -3, 1.5, 1.5);
   }
-  ctx.restore();
 
-  ctx.font = '20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.fillText('🤖', rx, ry - ROBOT_R - 2);
+  // ===== ANTENA =====
+  ctx.beginPath();
+  ctx.moveTo(0, -10);
+  ctx.lineTo(0, -16);
+  ctx.strokeStyle = mainColor;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0, -18, 2, 0, Math.PI*2);
+  ctx.fillStyle = mainColor;
+  ctx.fill();
+
+  // ===== BASE / PROPULSOR =====
+  ctx.beginPath();
+  ctx.moveTo(-6, 10);
+  ctx.lineTo(6, 10);
+  ctx.strokeStyle = mainColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // chama (quando em movimento)
+  const speed = Math.hypot(robot.vx, robot.vy);
+  if (speed > 0.5) {
+    ctx.beginPath();
+    ctx.moveTo(-4, 10);
+    ctx.lineTo(0, 16 + Math.random()*4);
+    ctx.lineTo(4, 10);
+    ctx.fillStyle = 'rgba(0,255,136,0.6)';
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
 function drawHUD() {
