@@ -306,6 +306,7 @@
       <div class="icon-btn" id="btnPlay"><span>⏸</span> PAUSAR</div>
       <div class="icon-btn" id="btnSpeed"><span>⚡</span> NORMAL</div>
       <div class="icon-btn" id="btnTeacher"><span>🎓</span> SALA DE AULA</div>
+      <div class="icon-btn" id="btnMusic"><span>🎵</span> MÚSICA</div>
       <div class="icon-btn" id="btnReset"><span>↺</span> RESET</div>
       <div class="icon-btn" id="btnFS"><span>⛶</span></div>
     </div>
@@ -602,7 +603,179 @@ function playBeep(freq,type='sine',dur=90){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  PARTÍCULAS
+//  🎵 MÚSICA ARCADE — CHIPTUNE (Web Audio API pura)
+// ═══════════════════════════════════════════════════════════════════════════
+let musicCtx = null, musicPlaying = false;
+let musicNodes = []; // refs para poder parar
+
+// Sequência no estilo arcade/chiptune — escala pentatônica + baixo + percussão
+const NOTE = n => 440 * Math.pow(2, (n - 69) / 12); // MIDI → Hz
+const BPM  = 140;
+const BEAT = 60 / BPM;
+
+// Melodia principal (notas MIDI, duração em beats)
+const MELODY = [
+  [76,.5],[76,.25],[79,.25],[76,.5],[74,.5],
+  [76,.5],[76,.25],[81,.25],[79,1],
+  [76,.5],[76,.25],[79,.25],[76,.5],[74,.5],
+  [72,.5],[71,.25],[72,.25],[74,1],
+  [76,.5],[76,.25],[79,.25],[76,.5],[74,.5],
+  [76,.5],[79,.25],[81,.25],[83,.5],[81,.5],
+  [79,.5],[76,.25],[74,.25],[72,.5],[71,.5],
+  [69,.5],[71,.25],[72,.25],[74,1],
+];
+
+// Baixo (oitava abaixo, padrão simples)
+const BASS = [
+  [52,1],[55,1],[52,1],[50,1],
+  [52,1],[55,1],[52,1],[50,1],
+  [48,1],[52,1],[48,1],[50,1],
+  [48,1],[52,1],[50,1],[48,1],
+];
+
+function makeMusicCtx(){
+  if(musicCtx) return musicCtx;
+  musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return musicCtx;
+}
+
+function playNote(ac, freq, startTime, dur, type, vol, detune=0){
+  const osc  = ac.createOscillator();
+  const gain = ac.createGain();
+  const filt = ac.createBiquadFilter();
+  filt.type = 'lowpass'; filt.frequency.value = 2200;
+  osc.type = type;
+  osc.frequency.value = freq;
+  osc.detune.value = detune;
+  osc.connect(filt); filt.connect(gain); gain.connect(ac.destination);
+  const att = 0.008, rel = dur * 0.35;
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(vol, startTime + att);
+  gain.gain.setValueAtTime(vol, startTime + dur - rel);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+  osc.start(startTime);
+  osc.stop(startTime + dur + 0.05);
+  musicNodes.push(osc, gain);
+}
+
+function playDrum(ac, startTime, type){
+  // Kick
+  if(type==='kick'){
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.frequency.setValueAtTime(180, startTime);
+    o.frequency.exponentialRampToValueAtTime(40, startTime+0.12);
+    g.gain.setValueAtTime(0.6, startTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime+0.18);
+    o.connect(g); g.connect(ac.destination);
+    o.start(startTime); o.stop(startTime+0.2);
+    musicNodes.push(o, g);
+  }
+  // Snare (ruído)
+  if(type==='snare'){
+    const buf=ac.createBuffer(1,ac.sampleRate*0.1,ac.sampleRate);
+    const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    const src=ac.createBufferSource(), g=ac.createGain(), f=ac.createBiquadFilter();
+    f.type='bandpass'; f.frequency.value=1800; f.Q.value=0.5;
+    src.buffer=buf; src.connect(f); f.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0.18, startTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime+0.09);
+    src.start(startTime); src.stop(startTime+0.12);
+    musicNodes.push(src, g);
+  }
+  // Hi-hat
+  if(type==='hat'){
+    const buf=ac.createBuffer(1,ac.sampleRate*0.04,ac.sampleRate);
+    const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    const src=ac.createBufferSource(), g=ac.createGain(), f=ac.createBiquadFilter();
+    f.type='highpass'; f.frequency.value=7000;
+    src.buffer=buf; src.connect(f); f.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0.07, startTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime+0.035);
+    src.start(startTime); src.stop(startTime+0.05);
+    musicNodes.push(src, g);
+  }
+}
+
+function scheduleMusic(){
+  if(!musicPlaying) return;
+  const ac = makeMusicCtx();
+  const loopDur = MELODY.reduce((s,[,d])=>s+d*BEAT,0);
+  const now = ac.currentTime + 0.05;
+
+  // Melodia (square wave)
+  let t=now;
+  for(let rep=0;rep<2;rep++){
+    for(const [n,d] of MELODY){
+      playNote(ac, NOTE(n), t, d*BEAT*0.88, 'square', 0.08);
+      t+=d*BEAT;
+    }
+  }
+
+  // Baixo (sawtooth)
+  t=now;
+  const bassLoop=loopDur*2;
+  let bi=0;
+  while(t<now+bassLoop){
+    const [n,d]=BASS[bi%BASS.length];
+    playNote(ac, NOTE(n), t, d*BEAT*0.7, 'sawtooth', 0.06, -5);
+    t+=d*BEAT; bi++;
+  }
+
+  // Contraponto (triangle, 1 oitava acima, offset)
+  t = now + BEAT*2;
+  const COUNTER=[
+    [83,.25],[81,.25],[79,.25],[76,.5],[null,.25],
+    [81,.25],[79,.25],[76,.25],[74,.5],[null,.25],
+    [83,.25],[84,.25],[83,.25],[81,.5],[null,.25],
+    [79,.25],[76,.25],[74,.25],[72,.5],[null,.5],
+  ];
+  for(let rep=0;rep<4;rep++){
+    for(const [n,d] of COUNTER){
+      if(n!==null) playNote(ac, NOTE(n), t, d*BEAT*0.75, 'triangle', 0.045);
+      t+=d*BEAT;
+    }
+  }
+
+  // Percussão (kick+snare+hat)
+  const bars = Math.round(loopDur*2/BEAT/4);
+  for(let bar=0;bar<bars;bar++){
+    const bt=now+bar*4*BEAT;
+    playDrum(ac,bt,'kick');
+    playDrum(ac,bt+BEAT,'hat');
+    playDrum(ac,bt+BEAT*1.5,'hat');
+    playDrum(ac,bt+BEAT*2,'snare');
+    playDrum(ac,bt+BEAT*2.5,'hat');
+    playDrum(ac,bt+BEAT*3,'hat');
+    playDrum(ac,bt+BEAT*3.5,'kick');
+  }
+
+  // Reagenda antes do fim (loop contínuo)
+  const loopTotal = loopDur*2*1000;
+  setTimeout(()=>{ if(musicPlaying) scheduleMusic(); }, loopTotal - 600);
+}
+
+function startMusic(){
+  if(musicPlaying) return;
+  musicPlaying = true;
+  makeMusicCtx();
+  if(musicCtx.state==='suspended') musicCtx.resume();
+  scheduleMusic();
+  document.getElementById('btnMusic').classList.add('active-mode');
+  document.getElementById('btnMusic').innerHTML='<span>🔇</span> MÚSICA';
+}
+
+function stopMusic(){
+  musicPlaying = false;
+  musicNodes.forEach(n=>{ try{n.stop&&n.stop(); n.disconnect&&n.disconnect();}catch(e){} });
+  musicNodes=[];
+  document.getElementById('btnMusic').classList.remove('active-mode');
+  document.getElementById('btnMusic').innerHTML='<span>🎵</span> MÚSICA';
+}
+
+function toggleMusic(){
+  musicPlaying ? stopMusic() : startMusic();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 class Particle{
   constructor(x,y,col,v=0.5){
@@ -1072,7 +1245,7 @@ function collide(){
       burst(o.x,o.y,o.rule.flee?'rgba(255,26,94,':'rgba(0,255,163,');
       addFloat(o.x,o.y-22,(o.rule.pts>0?'+':'')+o.rule.pts,o.rule.flee?'#ff1a5e':'#00ffa3');
       scoreHistory.push(score);if(scoreHistory.length>80)scoreHistory.shift();
-      if(o.rule.flee){dmg++;addLog(`[COLISÃO] ${o.rule.name} · ${o.rule.pts} pts`,'#ff1a5e');}
+      if(o.rule.pts<0){dmg++;addLog(`[DANO] ${o.rule.name} ${o.rule.pts} pts`,'#ff1a5e');}
       else{collected++;addLog(`[CAPTURADO] ${o.rule.name} +${o.rule.pts} pts`,'#00ffa3');}
       // Auto-avança passo para 5 (aprendizado) na sala de aula
       if(explainMode){currentStep=4;updateClassroomPanel();}
@@ -1262,6 +1435,7 @@ function autoAdvanceStep(){
 ['btnSpeed','btnSpeed2'].forEach(id=>document.getElementById(id).addEventListener('click',cycleSpeed));
 ['btnReset','btnReset2'].forEach(id=>document.getElementById(id).addEventListener('click',reset));
 document.getElementById('btnTeacher').addEventListener('click',toggleTeacher);
+document.getElementById('btnMusic').addEventListener('click',toggleMusic);
 document.getElementById('clearLog').addEventListener('click',()=>document.getElementById('log').innerHTML='');
 document.getElementById('btnFS').addEventListener('click',()=>{
   const el=document.documentElement,isFS=document.fullscreenElement||document.webkitFullscreenElement;
