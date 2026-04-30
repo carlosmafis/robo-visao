@@ -1044,7 +1044,7 @@ function vision(){
 
 function moveRobot(){
   // No modo professor, velocidade máxima menor
-  const MV=explainMode?1.4:3.8, AC=explainMode?0.14:0.35, FR=0.90;
+  const MV=explainMode?2.2:3.8, AC=explainMode?0.22:0.35, FR=0.90;
   if(robot.state==='idle'){robot.vx+=rand(-.2,.2);robot.vy+=rand(-.2,.2);}
   else if(robot.state==='chase'&&robot.target){const dx=robot.target.x-robot.x,dy=robot.target.y-robot.y,d=Math.hypot(dx,dy)||1;robot.vx+=dx/d*AC;robot.vy+=dy/d*AC;robot.angle=Math.atan2(dy,dx);}
   else if(robot.state==='flee'&&robot.target){const dx=robot.x-robot.target.x,dy=robot.y-robot.target.y,d=Math.hypot(dx,dy)||1;robot.vx+=dx/d*AC;robot.vy+=dy/d*AC;}
@@ -1056,7 +1056,7 @@ function moveRobot(){
 }
 
 function moveObjects(){
-  const slow=explainMode?.35:.5;
+  const slow=explainMode?.65:.5;
   for(const o of objects){o.x+=o.vx*slow;o.y+=o.vy*slow;if(o.x<OBJ_R||o.x>W-OBJ_R)o.vx*=-1;if(o.y<OBJ_R||o.y>H-OBJ_R)o.vy*=-1;o.pt++;o.pulse+=.06;}
 }
 
@@ -1190,24 +1190,7 @@ function draw(){
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  LOOP PRINCIPAL
-// ═══════════════════════════════════════════════════════════════════════════
-function loop(){
-  if(!paused){
-    // No modo professor o loop interno roda com fração do SPEED
-    const baseSteps = explainMode ? 1 : SPEEDS[speedIdx];
-    for(let i=0;i<baseSteps;i++){
-      // No modo professor, pula 2 em cada 3 ticks para simular câmera lenta
-      if(explainMode&&(tick%3!==0)) { tick++; robotBobble+=.02; continue; }
-      if(tick%6===0) vision();
-      moveRobot();moveObjects();collide();
-    }
-    if(tick%3===0) updateUI();
-  }
-  draw();
-  requestAnimationFrame(loop);
-}
+// (mainLoop abaixo)
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  CONTROLES
@@ -1270,8 +1253,10 @@ function autoAdvanceStep(){
   // passo 4→0 só ao capturar (feito no collide)
   updateClassroomPanel();
 }
-// Injeta chamada no loop
-const _origLoop=loop;
+// badge de velocidade
+  if(explainMode){
+    document.getElementById('class-speed-badge').textContent='🐢 MODO LENTO — 60% VELOCIDADE';
+  }
 
 ['btnPlay','btnPlay2'].forEach(id=>document.getElementById(id).addEventListener('click',togglePause));
 ['btnSpeed','btnSpeed2'].forEach(id=>document.getElementById(id).addEventListener('click',cycleSpeed));
@@ -1294,8 +1279,7 @@ function mainLoop(){
   if(!paused){
     const baseSteps=explainMode?1:SPEEDS[speedIdx];
     for(let i=0;i<baseSteps;i++){
-      if(explainMode&&(tick%3!==0)){tick++;continue;}
-      if(tick%6===0) vision();
+      if(tick%4===0) vision();
       moveRobot();moveObjects();collide();
     }
     if(explainMode) autoAdvanceStep();
