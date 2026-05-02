@@ -1,148 +1,119 @@
 // =============================================================================
-// STATE v7 — estado global + telemetria + competidor
+// TELEMETRY — Sparkline acurácia + barras por cor
 // =============================================================================
-import { CONFIG, RULES } from './config.js';
+import { telemetry } from './state.js';
+import { RULES } from './config.js';
 
-const seedW = () => RULES.map(() => Array(4).fill(0).map(() => (Math.random() - 0.5) * 0.3));
-const seedB = () => RULES.map(() => 0);
+const $ = id => document.getElementById(id);
 
-function biasedSeed(W, b) {
-  RULES.forEach((rule, i) => {
-    const ranges = rule.hueRanges;
-    const center = ranges[0][0] === 0 && ranges.length > 1
-      ? 5
-      : (ranges[0][0] + ranges[0][1]) / 2;
-    const huePref = center / 360;
-    W[i][0] = 0.6 - Math.abs(huePref - 0.5) * 0.4 + (Math.random() - 0.5) * 0.1;
-    W[i][1] = 0.4 + (Math.random() - 0.5) * 0.2;
-    W[i][2] = 0.3 + (Math.random() - 0.5) * 0.2;
-    W[i][3] = 0.2 + (Math.random() - 0.5) * 0.2;
-    b[i] = -0.3 - Math.abs(huePref - 0.5) * 0.5;
-  });
-}
+let sparkCtx = null, sparkW = 0, sparkH = 0;
 
-export const adaptive = { weights: [1, 1, 1, 1], learnCount: 0 };
-
-export const NN = {
-  W: seedW(), b: seedB(),
-  lastInput: [0, 0, 0, 0],
-  lastLogits: RULES.map(() => 0),
-  lastProbs: RULES.map(() => 0),
-};
-biasedSeed(NN.W, NN.b);
-
-// Telemetria de aprendizado
-export const telemetry = {
-  hits: 0,
-  total: 0,
-  accuracyHistory: [],          // [{t, acc}]
-  perClass: RULES.map(() => ({ hits: 0, total: 0 })),
-  windowSize: 20,
-  recent: [],                   // últimos N acertos (1) ou erros (0)
-};
-
-export function resetTelemetry() {
-  telemetry.hits = 0;
-  telemetry.total = 0;
-  telemetry.accuracyHistory.length = 0;
-  telemetry.perClass = RULES.map(() => ({ hits: 0, total: 0 }));
-  telemetry.recent.length = 0;
-}
-
-export function recordOutcome(classIdx, correct) {
-  telemetry.total++;
-  telemetry.perClass[classIdx].total++;
-  if (correct) {
-    telemetry.hits++;
-    telemetry.perClass[classIdx].hits++;
+function ensureSpark() {
+  const c = $('telemetry-spark');
+  if (!c) return null;
+  if (!sparkCtx) sparkCtx = c.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = c.offsetWidth || 260, h = c.offsetHeight || 50;
+  if (w !== sparkW || h !== sparkH) {
+    sparkW = w; sparkH = h;
+    c.width = w * dpr; c.height = h * dpr;
+    sparkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  telemetry.recent.push(correct ? 1 : 0);
-  if (telemetry.recent.length > telemetry.windowSize) telemetry.recent.shift();
-  const winAcc = telemetry.recent.reduce((a, b) => a + b, 0) / telemetry.recent.length;
-  telemetry.accuracyHistory.push(winAcc);
-  if (telemetry.accuracyHistory.length > CONFIG.TELEMETRY_MAX) telemetry.accuracyHistory.shift();
+  return sparkCtx;
 }
 
-// ── Competidor (robô B com pesos próprios) ──
-export const NN_B = {
-  W: seedW(), b: seedB(),
-  lastProbs: RULES.map(() => 0),
-};
-biasedSeed(NN_B.W, NN_B.b);
+export function drawAccuracySpark() {
+  const g = ensureSpark();
+  if (!g) return;
+  const w = sparkW, h = sparkH;
+  g.clearRect(0, 0, w, h);
+  // Grid sutil
+  g.strokeStyle = 'rgba(0,255,163,.06)'; g.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const y = (i / 4) * h;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+  }
+  // 50% line
+  g.strokeStyle = 'rgba(255,216,58,.18)'; g.setLineDash([2, 4]);
+  g.beginPath(); g.moveTo(0, h * 0.5); g.lineTo(w, h * 0.5); g.stroke();
+  g.setLineDash([]);
 
-export const competitor = {
-  enabled: false,
-  // Robô B vive no mesmo arena, posição independente
-  robot: null,
-  score: 0, hits: 0, total: 0,
-  accuracyHistory: [],
-  recent: [],
-};
+  const data = telemetry.accuracyHistory;
+  if (data.length < 2) {
+    g.fillStyle = 'rgba(154,217,192,.45)';
+    g.font = '9px "Share Tech Mono"';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('Aguardando dados...', w / 2, h / 2);
+    return;
+  }
+  // Área
+  g.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - v * (h - 4) - 2;
+    i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+  });
+  g.lineTo(w, h); g.lineTo(0, h); g.closePath();
+  const gr = g.createLinearGradient(0, 0, 0, h);
+  gr.addColorStop(0, 'rgba(0,255,163,.32)'); gr.addColorStop(1, 'rgba(0,255,163,.02)');
+  g.fillStyle = gr; g.fill();
+  // Linha
+  g.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - v * (h - 4) - 2;
+    i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+  });
+  g.strokeStyle = '#00ffa3'; g.lineWidth = 1.6;
+  g.shadowColor = '#00ffa3'; g.shadowBlur = 6; g.stroke(); g.shadowBlur = 0;
 
-export function resetCompetitor() {
-  competitor.score = 0;
-  competitor.hits = 0;
-  competitor.total = 0;
-  competitor.accuracyHistory.length = 0;
-  competitor.recent.length = 0;
-  // Reseed
-  NN_B.W = seedW(); NN_B.b = seedB(); biasedSeed(NN_B.W, NN_B.b);
+  // Pct atual
+  const last = data[data.length - 1];
+  g.fillStyle = '#00ffa3';
+  g.font = 'bold 11px "Orbitron"';
+  g.textAlign = 'right'; g.textBaseline = 'top';
+  g.fillText(`${Math.round(last * 100)}%`, w - 6, 4);
 }
 
-export function recordCompetitorOutcome(correct) {
-  competitor.total++;
-  if (correct) competitor.hits++;
-  competitor.recent.push(correct ? 1 : 0);
-  if (competitor.recent.length > 20) competitor.recent.shift();
-  const acc = competitor.recent.reduce((a, b) => a + b, 0) / competitor.recent.length;
-  competitor.accuracyHistory.push(acc);
-  if (competitor.accuracyHistory.length > CONFIG.TELEMETRY_MAX) competitor.accuracyHistory.shift();
+export function updatePerClassBars() {
+  const wrap = $('per-class-bars');
+  if (!wrap) return;
+  if (!wrap.children.length) {
+    RULES.forEach((r, i) => {
+      const row = document.createElement('div');
+      row.className = 'pcb-row';
+      row.innerHTML = `
+        <span class="pcb-dot" style="background:${r.hex};box-shadow:0 0 6px ${r.hex}"></span>
+        <span class="pcb-name">${r.name}</span>
+        <div class="pcb-bg"><div class="pcb-fill" id="pcb-fill-${i}" style="background:${r.hex}"></div></div>
+        <span class="pcb-val" id="pcb-val-${i}" style="color:${r.hex}">—</span>
+      `;
+      wrap.appendChild(row);
+    });
+  }
+  RULES.forEach((_, i) => {
+    const c = telemetry.perClass[i];
+    const acc = c.total > 0 ? c.hits / c.total : 0;
+    const fill = document.getElementById(`pcb-fill-${i}`);
+    const val = document.getElementById(`pcb-val-${i}`);
+    if (fill) fill.style.width = `${Math.round(acc * 100)}%`;
+    if (val) val.textContent = c.total > 0 ? `${Math.round(acc * 100)}% (${c.hits}/${c.total})` : '—';
+  });
+  // Resumo
+  const sum = $('telemetry-summary');
+  if (sum) {
+    const overall = telemetry.total > 0 ? Math.round(telemetry.hits / telemetry.total * 100) : 0;
+    sum.innerHTML = `
+      <span><b>${telemetry.hits}</b>/<b>${telemetry.total}</b> acertos</span>
+      <span>·</span>
+      <span><b>${overall}%</b> geral</span>
+      <span>·</span>
+      <span>janela móvel: <b>${telemetry.windowSize}</b></span>
+    `;
+  }
 }
 
-export const state = {
-  W: 0, H: 0,
-  robot: null,
-  objects: [],
-  score: 0, collected: 0, fled_c: 0, dmg: 0, tick: 0,
-  lastNear: null,
-  lastScores: [],
-  scoreHistory: [],
-  glitchEffect: 0, glitchColor: '255,59,111',
-  radarAngle: 0, radarPulses: [],
-  robotBobble: 0,
-  particles: [], floatLabels: [],
-  speedIdx: 0,
-  paused: false,
-  mode: 'train',                 // train | class | compete | vision
-  currentStep: 0,
-  synapsePackets: [],
-  teacherPhase: 0,
-  packetSpawnTimer: 0,
-  best: parseInt(localStorage.getItem(CONFIG.RECORD_KEY) || '0', 10),
-};
-
-// Helpers para snapshot/restore de pesos (export para webcam)
-export function snapshotWeights() {
-  return {
-    W: NN.W.map(r => r.slice()),
-    b: NN.b.slice(),
-    learnCount: adaptive.learnCount,
-    timestamp: Date.now(),
-    version: CONFIG.VERSION,
-  };
-}
-
-export function saveWeightsToLocalStorage() {
-  try {
-    localStorage.setItem(CONFIG.WEIGHTS_KEY, JSON.stringify(snapshotWeights()));
-    return true;
-  } catch { return false; }
-}
-
-export function loadWeightsFromLocalStorage() {
-  try {
-    const raw = localStorage.getItem(CONFIG.WEIGHTS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch { return null; }
+export function updateTelemetry() {
+  drawAccuracySpark();
+  updatePerClassBars();
 }

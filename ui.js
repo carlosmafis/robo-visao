@@ -1,149 +1,148 @@
 // =============================================================================
-// SIM v7 — lógica + integração com telemetria e competição
+// STATE v7 — estado global + telemetria + competidor
 // =============================================================================
 import { CONFIG, RULES } from './config.js';
-import { state, adaptive, NN, recordOutcome, competitor } from './state.js';
-import { burst, addFloat, resizeCanvas, canvas } from './render.js';
-import { playBeep } from './audio.js';
-import { buildInput, forward, learn, argmax, trueClass } from './neural.js';
-import { stepCompetitor, checkCompetitorCollisions } from './competition.js';
 
-const { ROBOT_R, OBJ_R, DETECT_R } = CONFIG;
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const rand = (a, b) => Math.random() * (b - a) + a;
+const seedW = () => RULES.map(() => Array(4).fill(0).map(() => (Math.random() - 0.5) * 0.3));
+const seedB = () => RULES.map(() => 0);
 
-let logCallback = null;
-export function setLogCallback(cb) { logCallback = cb; }
+function biasedSeed(W, b) {
+  RULES.forEach((rule, i) => {
+    const ranges = rule.hueRanges;
+    const center = ranges[0][0] === 0 && ranges.length > 1
+      ? 5
+      : (ranges[0][0] + ranges[0][1]) / 2;
+    const huePref = center / 360;
+    W[i][0] = 0.6 - Math.abs(huePref - 0.5) * 0.4 + (Math.random() - 0.5) * 0.1;
+    W[i][1] = 0.4 + (Math.random() - 0.5) * 0.2;
+    W[i][2] = 0.3 + (Math.random() - 0.5) * 0.2;
+    W[i][3] = 0.2 + (Math.random() - 0.5) * 0.2;
+    b[i] = -0.3 - Math.abs(huePref - 0.5) * 0.5;
+  });
+}
 
-export function spawnObject() {
-  const rule = RULES[Math.floor(Math.random() * RULES.length)];
-  let x, y, tries = 0;
-  do {
-    x = rand(OBJ_R + 16, state.W - OBJ_R - 16);
-    y = rand(OBJ_R + 16, state.H - OBJ_R - 16);
-    tries++;
-  } while (state.robot && dist({ x, y }, state.robot) < 140 && tries < 20);
+export const adaptive = { weights: [1, 1, 1, 1], learnCount: 0 };
+
+export const NN = {
+  W: seedW(), b: seedB(),
+  lastInput: [0, 0, 0, 0],
+  lastLogits: RULES.map(() => 0),
+  lastProbs: RULES.map(() => 0),
+};
+biasedSeed(NN.W, NN.b);
+
+// Telemetria de aprendizado
+export const telemetry = {
+  hits: 0,
+  total: 0,
+  accuracyHistory: [],          // [{t, acc}]
+  perClass: RULES.map(() => ({ hits: 0, total: 0 })),
+  windowSize: 20,
+  recent: [],                   // últimos N acertos (1) ou erros (0)
+};
+
+export function resetTelemetry() {
+  telemetry.hits = 0;
+  telemetry.total = 0;
+  telemetry.accuracyHistory.length = 0;
+  telemetry.perClass = RULES.map(() => ({ hits: 0, total: 0 }));
+  telemetry.recent.length = 0;
+}
+
+export function recordOutcome(classIdx, correct) {
+  telemetry.total++;
+  telemetry.perClass[classIdx].total++;
+  if (correct) {
+    telemetry.hits++;
+    telemetry.perClass[classIdx].hits++;
+  }
+  telemetry.recent.push(correct ? 1 : 0);
+  if (telemetry.recent.length > telemetry.windowSize) telemetry.recent.shift();
+  const winAcc = telemetry.recent.reduce((a, b) => a + b, 0) / telemetry.recent.length;
+  telemetry.accuracyHistory.push(winAcc);
+  if (telemetry.accuracyHistory.length > CONFIG.TELEMETRY_MAX) telemetry.accuracyHistory.shift();
+}
+
+// ── Competidor (robô B com pesos próprios) ──
+export const NN_B = {
+  W: seedW(), b: seedB(),
+  lastProbs: RULES.map(() => 0),
+};
+biasedSeed(NN_B.W, NN_B.b);
+
+export const competitor = {
+  enabled: false,
+  // Robô B vive no mesmo arena, posição independente
+  robot: null,
+  score: 0, hits: 0, total: 0,
+  accuracyHistory: [],
+  recent: [],
+};
+
+export function resetCompetitor() {
+  competitor.score = 0;
+  competitor.hits = 0;
+  competitor.total = 0;
+  competitor.accuracyHistory.length = 0;
+  competitor.recent.length = 0;
+  // Reseed
+  NN_B.W = seedW(); NN_B.b = seedB(); biasedSeed(NN_B.W, NN_B.b);
+}
+
+export function recordCompetitorOutcome(correct) {
+  competitor.total++;
+  if (correct) competitor.hits++;
+  competitor.recent.push(correct ? 1 : 0);
+  if (competitor.recent.length > 20) competitor.recent.shift();
+  const acc = competitor.recent.reduce((a, b) => a + b, 0) / competitor.recent.length;
+  competitor.accuracyHistory.push(acc);
+  if (competitor.accuracyHistory.length > CONFIG.TELEMETRY_MAX) competitor.accuracyHistory.shift();
+}
+
+export const state = {
+  W: 0, H: 0,
+  robot: null,
+  objects: [],
+  score: 0, collected: 0, fled_c: 0, dmg: 0, tick: 0,
+  lastNear: null,
+  lastScores: [],
+  scoreHistory: [],
+  glitchEffect: 0, glitchColor: '255,59,111',
+  radarAngle: 0, radarPulses: [],
+  robotBobble: 0,
+  particles: [], floatLabels: [],
+  speedIdx: 0,
+  paused: false,
+  mode: 'train',                 // train | class | compete | vision
+  currentStep: 0,
+  synapsePackets: [],
+  teacherPhase: 0,
+  packetSpawnTimer: 0,
+  best: parseInt(localStorage.getItem(CONFIG.RECORD_KEY) || '0', 10),
+};
+
+// Helpers para snapshot/restore de pesos (export para webcam)
+export function snapshotWeights() {
   return {
-    x, y,
-    vx: rand(-1.5, 1.5), vy: rand(-1.5, 1.5),
-    rule, pt: 0,
-    born: Date.now(), ttl: rand(6000, 10000),
-    pulse: Math.random() * Math.PI * 2,
+    W: NN.W.map(r => r.slice()),
+    b: NN.b.slice(),
+    learnCount: adaptive.learnCount,
+    timestamp: Date.now(),
+    version: CONFIG.VERSION,
   };
 }
 
-export function reset() {
-  resizeCanvas();
-  state.robot = { x: state.W / 2, y: state.H / 2, vx: 0, vy: 0, angle: 0, target: null, state: 'idle', bt: 0 };
-  state.objects = [];
-  state.score = 0; state.collected = 0; state.fled_c = 0; state.dmg = 0; state.tick = 0;
-  state.lastNear = null; state.lastScores = []; state.scoreHistory = [];
-  adaptive.weights = [1, 1, 1, 1];
-  adaptive.learnCount = 0;
-  state.radarAngle = 0; state.radarPulses = []; state.robotBobble = 0;
-  state.paused = false;
-  for (let i = 0; i < CONFIG.N_OBJECTS; i++) state.objects.push(spawnObject());
-  const log = document.getElementById('log');
-  if (log) log.innerHTML = '';
-}
-
-export function vision() {
-  let nearest = null, nd = Infinity;
-  for (const o of state.objects) {
-    const d = dist(state.robot, o);
-    if (d < DETECT_R && d < nd) { nearest = o; nd = d; }
-  }
-  state.lastNear = nearest;
-  if (nearest) {
-    const d = dist(state.robot, nearest);
-    state.lastScores = forward(buildInput(nearest.rule.hex, d));
-    state.robot.target = nearest;
-    state.robot.state = nearest.rule.flee ? 'flee' : 'chase';
-  } else {
-    state.lastScores = [];
-    state.robot.state = 'idle';
-    state.robot.target = null;
-  }
-}
-
-export function moveRobot() {
-  const slowMode = state.mode === 'class';
-  const MV = slowMode ? 2.2 : 3.8, AC = slowMode ? 0.22 : 0.35, FR = 0.90;
-  const r = state.robot;
-  if (r.state === 'idle') { r.vx += rand(-.2, .2); r.vy += rand(-.2, .2); }
-  else if (r.state === 'chase' && r.target) {
-    const dx = r.target.x - r.x, dy = r.target.y - r.y, d = Math.hypot(dx, dy) || 1;
-    r.vx += dx / d * AC; r.vy += dy / d * AC; r.angle = Math.atan2(dy, dx);
-  } else if (r.state === 'flee' && r.target) {
-    const dx = r.x - r.target.x, dy = r.y - r.target.y, d = Math.hypot(dx, dy) || 1;
-    r.vx += dx / d * AC; r.vy += dy / d * AC;
-  }
-  r.vx *= FR; r.vy *= FR;
-  const spd = Math.hypot(r.vx, r.vy);
-  if (spd > MV) { r.vx = r.vx / spd * MV; r.vy = r.vy / spd * MV; }
-  r.x = Math.max(ROBOT_R, Math.min(state.W - ROBOT_R, r.x + r.vx));
-  r.y = Math.max(ROBOT_R, Math.min(state.H - ROBOT_R, r.y + r.vy));
-  r.bt++; state.tick++;
-  state.robotBobble += state.mode === 'class' ? .03 : .06;
-
-  // Integra competidor
-  stepCompetitor();
-}
-
-export function moveObjects() {
-  const slow = state.mode === 'class' ? .65 : .5;
-  for (const o of state.objects) {
-    o.x += o.vx * slow; o.y += o.vy * slow;
-    if (o.x < OBJ_R || o.x > state.W - OBJ_R) o.vx *= -1;
-    if (o.y < OBJ_R || o.y > state.H - OBJ_R) o.vy *= -1;
-    o.pt++; o.pulse += .06;
-  }
-}
-
-export function collide() {
-  const now = Date.now();
-  state.objects = state.objects.filter(o => {
-    const d = dist(state.robot, o), exp = (now - o.born) > o.ttl;
-    if (d < ROBOT_R + OBJ_R - 5) {
-      state.score += o.rule.pts;
-      const x = buildInput(o.rule.hex, 0);
-      const probs = forward(x);
-      const predicted = argmax(probs);
-      const truth = trueClass(o.rule.hex);
-      const correct = predicted === truth;
-      const reward = correct ? +1 : -1;
-      learn(truth, reward, x);
-      recordOutcome(truth, correct);
-
-      state.glitchEffect = .4;
-      state.glitchColor = o.rule.flee ? '255,59,111' : '0,255,163';
-      canvas.classList.add('hit');
-      setTimeout(() => canvas.classList.remove('hit'), 90);
-      playBeep(o.rule.flee ? 160 : 700, 'sine', 100);
-      burst(o.x, o.y, o.rule.flee ? 'rgba(255,59,111,' : 'rgba(0,255,163,');
-      addFloat(o.x, o.y - 22, (o.rule.pts > 0 ? '+' : '') + o.rule.pts, o.rule.flee ? '#ff3b6f' : '#00ffa3');
-      state.scoreHistory.push(state.score);
-      if (state.scoreHistory.length > CONFIG.MAX_HISTORY) state.scoreHistory.shift();
-      if (o.rule.pts < 0) {
-        state.dmg++;
-        logCallback?.(`[DANO] ${o.rule.name} ${o.rule.pts} pts · pred:${RULES[predicted].name}`, '#ff3b6f');
-      } else {
-        state.collected++;
-        logCallback?.(`[CAPTURA] ${o.rule.name} +${o.rule.pts} pts · pred:${RULES[predicted].name} ${correct ? '✓' : '✗'}`, '#00ffa3');
-      }
-      if (state.mode === 'class') state.currentStep = 4;
-      return false;
-    }
-    if (exp) {
-      state.fled_c++;
-      logCallback?.(`[EXPIROU] ${o.rule.name}`, 'rgba(154,217,192,.4)');
-      return false;
-    }
+export function saveWeightsToLocalStorage() {
+  try {
+    localStorage.setItem(CONFIG.WEIGHTS_KEY, JSON.stringify(snapshotWeights()));
     return true;
-  });
-  // Competidor consome objetos também
-  checkCompetitorCollisions();
-  while (state.objects.length < CONFIG.N_OBJECTS) state.objects.push(spawnObject());
+  } catch { return false; }
 }
 
-export { dist };
+export function loadWeightsFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(CONFIG.WEIGHTS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
