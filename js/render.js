@@ -265,8 +265,11 @@ function updateRadar() {
   }
   state.radarPulses = state.radarPulses.filter(p => { p.r += 1.8; p.alpha -= .014; return p.alpha > 0 && p.r < DETECT_R + 20; });
 }
-function drawRadar(rx, ry, hasTarget) {
-  const c = hasTarget ? '0,255,163' : '0,140,70';
+function drawRadar(rx, ry, hasTarget, isB = false) {
+  const c = isB
+    ? (hasTarget ? '255,170,40' : '170,90,20')
+    : (hasTarget ? '0,255,163' : '0,140,70');
+  const glow = isB ? (hasTarget ? '#ffaa28' : '#aa5a14') : (hasTarget ? '#00ffa3' : '#00aa55');
   state.radarPulses.forEach(p => {
     ctx.beginPath(); ctx.arc(rx, ry, p.r, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(${c},${p.alpha * .35})`; ctx.lineWidth = 1; ctx.stroke();
@@ -281,9 +284,9 @@ function drawRadar(rx, ry, hasTarget) {
     ctx.fill();
   }
   const ex = rx + Math.cos(state.radarAngle) * DETECT_R, ey = ry + Math.sin(state.radarAngle) * DETECT_R;
-  ctx.save(); ctx.shadowColor = hasTarget ? '#00ffa3' : '#00aa55'; ctx.shadowBlur = hasTarget ? 12 : 5;
+  ctx.save(); ctx.shadowColor = glow; ctx.shadowBlur = hasTarget ? 12 : 5;
   ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(ex, ey);
-  ctx.strokeStyle = hasTarget ? 'rgba(0,255,163,.85)' : 'rgba(0,140,70,.55)';
+  ctx.strokeStyle = `rgba(${c},${hasTarget ? .85 : .55})`;
   ctx.lineWidth = hasTarget ? 1.8 : 1.2; ctx.stroke();
   ctx.restore();
 }
@@ -435,6 +438,7 @@ export function draw() {
 
   // Robô B (íris baseada na rede B)
   if (competitor.enabled && competitor.robot) {
+    drawRadar(competitor.robot.x, competitor.robot.y, !!competitor.robot.target, true);
     drawPremiumRobot(competitor.robot.x, competitor.robot.y, {
       state: competitor.robot.state,
       irisHex: predictedHex(NN_B.lastProbs),
