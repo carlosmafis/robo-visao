@@ -1,97 +1,142 @@
 // =============================================================================
-// NEURAL — Perceptron multi-classe + Softmax + Aprendizado Hebbian
+// MATH-LIVE — visualização da matemática em tempo real
+// Mostra: vetor x → multiplicação por W → logits z → softmax → decisão
 // =============================================================================
-import { CONFIG, RULES } from './config.js';
-import { NN, adaptive } from './state.js';
+import { state, NN } from './state.js';
+import { RULES } from './config.js';
 
-const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+const $ = id => document.getElementById(id);
 
-/** RGB(0–255) → HSV (h:0–360, s:0–1, v:0–1) */
-export function rgbToHsv(r, g, b) {
-  r /= 255; g /= 255; b /= 255;
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
-  let h = 0, s = mx === 0 ? 0 : d / mx, v = mx;
-  if (d !== 0) {
-    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-    else if (mx === g) h = ((b - r) / d + 2) / 6;
-    else h = ((r - g) / d + 4) / 6;
-  }
-  return { h: h * 360, s, v };
+function color(v, scale = 1) {
+  const t = Math.max(-1, Math.min(1, v / scale));
+  if (t >= 0) return `rgba(0,255,163,${0.15 + t * 0.55})`;
+  return `rgba(255,59,111,${0.15 + (-t) * 0.55})`;
 }
 
-/** Constrói o vetor de entrada normalizado [0..1] para a rede */
-export function buildInput(hex, distPx) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const { h, s, v } = rgbToHsv(r, g, b);
-  const proximity = 1 - Math.min(1, distPx / CONFIG.DETECT_R);
-  return [h / 360, s, v, proximity];
+export function buildMathLive() {
+  const root = $('math-live');
+  if (!root || root.dataset.built) return;
+  root.dataset.built = '1';
+  root.innerHTML = `
+    <div class="ml-section">
+      <div class="ml-label">① VETOR DE ENTRADA <span class="ml-eq">x = [H/360, S, V, prox]</span></div>
+      <div class="ml-row" id="ml-x-row"></div>
+    </div>
+    <div class="ml-section">
+      <div class="ml-label">② MATRIZ DE PESOS  <span class="ml-eq">W [classes × 4]</span> · cor = força</div>
+      <div class="ml-matrix" id="ml-W"></div>
+    </div>
+    <div class="ml-section">
+      <div class="ml-label">③ LOGITS  <span class="ml-eq">z_i = Σ W[i][j]·x[j] + b[i]</span></div>
+      <div class="ml-z-row" id="ml-z"></div>
+    </div>
+    <div class="ml-section">
+      <div class="ml-label">④ SOFTMAX → PROBABILIDADES  <span class="ml-eq">p_i = e^z_i / Σ e^z</span></div>
+      <div class="ml-z-row" id="ml-p"></div>
+    </div>
+    <div class="ml-section">
+      <div class="ml-label">⑤ DECISÃO  <span class="ml-eq">argmax(p)</span></div>
+      <div class="ml-decision" id="ml-dec">aguardando alvo…</div>
+    </div>
+  `;
 }
 
-/** Forward pass: x → logits z → softmax p */
-export function forward(x) {
-  // Pesos adaptativos didáticos modulam o ganho de cada entrada
-  const xMod = x.map((xi, j) => xi * adaptive.weights[j]);
-  const z = NN.W.map((row, i) => row.reduce((a, w, j) => a + w * xMod[j], 0) + NN.b[i]);
-  const max = Math.max(...z);
-  const exps = z.map(v => Math.exp(v - max));
-  const sum = exps.reduce((a, b) => a + b, 0) || 1;
-  const probs = exps.map(e => e / sum);
-  NN.lastInput = x.slice();
-  NN.lastLogits = z;
-  NN.lastProbs = probs;
-  return probs;
-}
+export function updateMathLive() {
+  buildMathLive();
+  const xRow = $('ml-x-row');
+  const Wel = $('ml-W');
+  const zRow = $('ml-z');
+  const pRow = $('ml-p');
+  const dec = $('ml-dec');
+  if (!xRow) return;
 
-/** Argmax → índice da classe vencedora */
-export const argmax = arr => arr.reduce((iMax, v, i, a) => v > a[iMax] ? i : iMax, 0);
+  const x = NN.lastInput;
+  const z = NN.lastLogits;
+  const p = NN.lastProbs;
+  const labels = ['H', 'S', 'V', 'D'];
+  const has = !!state.lastNear;
 
-/** Margem entre a 1ª e 2ª melhores classes (medida de incerteza) */
-export function margin(probs) {
-  const sorted = probs.slice().sort((a, b) => b - a);
-  return sorted[0] - sorted[1];
-}
-
-/**
- * Aprendizado Hebbian de classe (perceptron-like):
- *  ΔW[c][j] = η · reward · x[j]
- * Atualiza tanto a matriz W (rede real) quanto os pesos
- * adaptativos didáticos.
- */
-export function learn(classIdx, reward, x) {
-  const η = CONFIG.LEARNING_RATE;
-  const [lo, hi] = CONFIG.WEIGHT_CLAMP;
-
+  // ① vetor x
+  xRow.innerHTML = '';
   for (let j = 0; j < 4; j++) {
-    NN.W[classIdx][j] = clamp(NN.W[classIdx][j] + η * reward * x[j], lo, hi);
+    const cell = document.createElement('div');
+    cell.className = 'ml-x-cell' + (has ? ' lit' : '');
+    cell.style.background = has ? color(x[j], 1) : 'transparent';
+    cell.innerHTML = `<div class="ml-x-lbl">${labels[j]}</div><div class="ml-x-val">${(x[j] || 0).toFixed(2)}</div>`;
+    xRow.appendChild(cell);
   }
-  NN.b[classIdx] = clamp(NN.b[classIdx] + η * reward * 0.5, lo, hi);
 
-  // Pesos adaptativos didáticos (ganho global por dimensão de entrada)
-  const [aLo, aHi] = CONFIG.ADAPT_CLAMP;
-  for (let j = 0; j < adaptive.weights.length; j++) {
-    adaptive.weights[j] = clamp(adaptive.weights[j] + η * reward * x[j] * 0.3, aLo, aHi);
+  // ② matriz W (compacta)
+  if (!Wel.dataset.built || Wel.children.length !== RULES.length * 5) {
+    Wel.innerHTML = '';
+    Wel.dataset.built = '1';
+    // header
+    Wel.appendChild(makeHd(''));
+    labels.forEach(l => Wel.appendChild(makeHd(l)));
+    RULES.forEach((r, i) => {
+      const lbl = document.createElement('div');
+      lbl.className = 'ml-W-lbl';
+      lbl.innerHTML = `<span class="ml-W-dot" style="background:${r.hex};box-shadow:0 0 5px ${r.hex}"></span>${r.name.slice(0, 4)}`;
+      Wel.appendChild(lbl);
+      for (let j = 0; j < 4; j++) {
+        const c = document.createElement('div');
+        c.className = 'ml-W-cell';
+        c.id = `ml-W-${i}-${j}`;
+        Wel.appendChild(c);
+      }
+    });
   }
-  adaptive.learnCount++;
+  RULES.forEach((_, i) => {
+    for (let j = 0; j < 4; j++) {
+      const c = $(`ml-W-${i}-${j}`);
+      if (!c) continue;
+      const w = NN.W[i][j];
+      c.style.background = color(w, 1.2);
+      c.textContent = w.toFixed(2);
+      // destaque na linha vencedora
+      if (has && i === argmax(p)) c.classList.add('winner'); else c.classList.remove('winner');
+    }
+  });
+
+  // ③ logits
+  zRow.innerHTML = '';
+  RULES.forEach((r, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'ml-z-cell';
+    cell.style.borderColor = r.hex + '66';
+    cell.innerHTML = `<div class="ml-z-lbl" style="color:${r.hex}">${r.name.slice(0, 4)}</div>
+                      <div class="ml-z-val">${(z[i] || 0).toFixed(2)}</div>`;
+    zRow.appendChild(cell);
+  });
+
+  // ④ softmax
+  pRow.innerHTML = '';
+  const winIdx = has ? argmax(p) : -1;
+  RULES.forEach((r, i) => {
+    const pct = Math.round((p[i] || 0) * 100);
+    const cell = document.createElement('div');
+    cell.className = 'ml-p-cell' + (i === winIdx ? ' winner' : '');
+    cell.style.borderColor = r.hex;
+    cell.innerHTML = `
+      <div class="ml-p-name" style="color:${r.hex}">${r.name.slice(0, 4)}</div>
+      <div class="ml-p-bar-bg"><div class="ml-p-bar-fill" style="width:${pct}%;background:${r.hex};box-shadow:0 0 8px ${r.hex}"></div></div>
+      <div class="ml-p-pct" style="color:${r.hex}">${pct}%</div>`;
+    pRow.appendChild(cell);
+  });
+
+  // ⑤ decisão
+  if (has && winIdx >= 0) {
+    const r = RULES[winIdx];
+    const conf = Math.round((p[winIdx] || 0) * 100);
+    dec.innerHTML = `
+      <span class="ml-dec-dot" style="background:${r.hex};box-shadow:0 0 12px ${r.hex}"></span>
+      <span class="ml-dec-name" style="color:${r.hex}">${r.name}</span>
+      <span class="ml-dec-conf">${conf}% confiança</span>
+      <span class="ml-dec-action">→ ${r.action}</span>`;
+  } else {
+    dec.innerHTML = '<span class="ml-dec-idle">⏳ Nenhum alvo no raio de detecção</span>';
+  }
 }
 
-/** Atalho usado pela UI: dado um hex e a distância, retorna probs */
-export function scoreColor(hex, distPx = 0) {
-  return forward(buildInput(hex, distPx));
-}
-
-/**
- * Determina a classe REAL pretendida (rótulo) de uma cor por suas faixas HSV
- * — usado como verdade-base para o aprendizado por reforço.
- */
-export function trueClass(hex) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const { h } = rgbToHsv(r, g, b);
-  for (let i = 0; i < RULES.length; i++) {
-    if (RULES[i].hueRanges.some(([a, b]) => h >= a && h <= b)) return i;
-  }
-  return 0;
-}
+function makeHd(t) { const d = document.createElement('div'); d.className = 'ml-W-hd'; d.textContent = t; return d; }
+function argmax(a) { let m = 0; for (let i = 1; i < a.length; i++) if (a[i] > a[m]) m = i; return m; }

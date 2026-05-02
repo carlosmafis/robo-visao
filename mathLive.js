@@ -1,69 +1,129 @@
 // =============================================================================
-// CONFIG v7 — Premium Edition
+// COMPETITION — 2 robôs treinando em paralelo (A vs B)
+// Compartilham o mesmo arena/objects, mas têm posições e pesos independentes.
 // =============================================================================
-export const CONFIG = {
-  VERSION: 'v7.0',
-  ROBOT_R: 18,
-  OBJ_R: 12,
-  DETECT_R: 110,
-  N_OBJECTS: 8,
-  SPEEDS: [1, 2, 4],
-  SPEED_LABELS: ['Normal', 'Rápido', 'Turbo'],
-  TEACHER_SPEED_FACTOR: 0.4,
-  MAX_LOG_ENTRIES: 60,
-  MAX_HISTORY: 80,
-  STEP_TIME_S: 5,
-  LEARNING_RATE: 0.05,
-  WEIGHT_CLAMP: [-1.5, 1.5],
-  ADAPT_CLAMP: [0.5, 1.5],
-  RECORD_KEY: 'cn7_highscore',
-  WEIGHTS_KEY: 'cn7_weights',          // pesos exportáveis para webcam
-  TELEMETRY_MAX: 60,                    // pontos do gráfico de acurácia
-  COMPETITOR_LR: 0.12,                  // robô B aprende mais agressivo
-};
+import { CONFIG, RULES } from './config.js';
+import { state, NN, NN_B, competitor, recordCompetitorOutcome, resetCompetitor } from './state.js';
+import { rgbToHsv, buildInput } from './neural.js';
+import { burst, addFloat } from './render.js';
+import { playBeep } from './audio.js';
 
-// ── Regras de cor ──
-export const RULES = [
-  { name: 'VERMELHO', hex: '#ff2255', action: 'CAPTURAR',  pts: +10, flee: false, hueRanges: [[0, 15], [345, 360]], minS: .30, minV: .20 },
-  { name: 'LARANJA',  hex: '#ff8a1a', action: 'APROXIMAR', pts: +6,  flee: false, hueRanges: [[15, 40]],            minS: .35, minV: .25 },
-  { name: 'AMARELO',  hex: '#ffdd00', action: 'ALERTAR',   pts: -8,  flee: true,  hueRanges: [[40, 75]],            minS: .35, minV: .30 },
-  { name: 'VERDE',    hex: '#00ff88', action: 'APROXIMAR', pts: +8,  flee: false, hueRanges: [[75, 165]],           minS: .25, minV: .20 },
-  { name: 'CIANO',    hex: '#00eeff', action: 'DESVIAR',   pts: -3,  flee: true,  hueRanges: [[165, 195]],          minS: .30, minV: .30 },
-  { name: 'AZUL',     hex: '#0099ff', action: 'RECUAR',    pts: -5,  flee: true,  hueRanges: [[195, 270]],          minS: .25, minV: .15 },
-  { name: 'MAGENTA',  hex: '#ff22ff', action: 'CAPTURAR',  pts: +15, flee: false, hueRanges: [[270, 345]],          minS: .30, minV: .20 },
-];
+const { ROBOT_R, OBJ_R, DETECT_R } = CONFIG;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const rand = (a, b) => Math.random() * (b - a) + a;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-export const CLASS_STEPS = [
-  {
-    num: 'PASSO 1 / 5', title: '🔍 Percepção — O Robô Detecta',
-    desc: 'O sensor radar varre 360° continuamente.\nQuando um objeto entra no raio de detecção\n(≤ 110px), o sistema captura sua cor.',
-    formula: 'Raio de detecção = 110 px\nMétodo = Distância Euclidiana\nd = √( (Δx)² + (Δy)² )'
-  },
-  {
-    num: 'PASSO 2 / 5', title: '🎨 Conversão RGB → HSV',
-    desc: 'A cor capturada (RGB) é convertida para\no espaço HSV — mais próximo da percepção\nhumana e ideal para classificação neural.',
-    formula: 'H = Matiz (0–360°) → IDENTIFICA a cor\nS = Saturação (0–1) → intensidade\nV = Brilho (0–1) → luminosidade'
-  },
-  {
-    num: 'PASSO 3 / 5', title: '⚡ Sinapses — Propagação Neural',
-    desc: 'As 4 entradas (H, S, V, Distância) são\nmultiplicadas por uma matriz de pesos W (7×4).\nCada saída é a soma ponderada.',
-    formula: 'z_i = Σ_j ( W[i][j] · x[j] ) + b[i]\nOnde i = classe (cor), j = entrada\nx = [H/360, S, V, 1 − D/Rdet]'
-  },
-  {
-    num: 'PASSO 4 / 5', title: '🏆 Softmax — Probabilidade por Classe',
-    desc: 'Aplicamos softmax: cada saída vira\numa probabilidade entre 0 e 1.\nA classe vencedora é argmax.',
-    formula: 'p_i = exp(z_i) / Σ_k exp(z_k)\nDecisão = argmax(p)\nMargem = p₁ − p₂'
-  },
-  {
-    num: 'PASSO 5 / 5', title: '🧬 Aprendizado Hebbian',
-    desc: 'Após cada colisão, atualizamos os pesos\nda classe vencedora na direção das entradas.\nReforço positivo se acertou, negativo se errou.',
-    formula: 'ΔW[c][j] = η · r · x[j]\nW[c][j] = clamp( W[c][j] + ΔW, −1.5, +1.5 )\nη = 0.05  ·  r ∈ {−1, +1}'
-  },
-];
+// Forward específico para a rede B (LR mais agressivo)
+function forwardB(x) {
+  const z = NN_B.W.map((row, i) => row.reduce((a, w, j) => a + w * x[j], 0) + NN_B.b[i]);
+  const max = Math.max(...z);
+  const exps = z.map(v => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0) || 1;
+  const probs = exps.map(e => e / sum);
+  NN_B.lastProbs = probs;
+  return probs;
+}
 
-export const MODES = [
-  { id: 'train',   icon: '🤖', label: 'Treino',       title: 'Arena de Treino' },
-  { id: 'class',   icon: '🎓', label: 'Sala de Aula', title: 'Sala de Aula — IA Adaptativa' },
-  { id: 'compete', icon: '⚔️', label: 'Competição',   title: 'Modo Competição — A vs B' },
-  { id: 'vision',  icon: '📷', label: 'Visão Real',   title: 'Visão Real — Webcam' },
-];
+function trueClass(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const { h } = rgbToHsv(r, g, b);
+  for (let i = 0; i < RULES.length; i++) {
+    if (RULES[i].hueRanges.some(([a, b]) => h >= a && h <= b)) return i;
+  }
+  return 0;
+}
+
+function learnB(classIdx, reward, x) {
+  const η = CONFIG.COMPETITOR_LR;
+  const [lo, hi] = CONFIG.WEIGHT_CLAMP;
+  for (let j = 0; j < 4; j++) {
+    NN_B.W[classIdx][j] = clamp(NN_B.W[classIdx][j] + η * reward * x[j], lo, hi);
+  }
+  NN_B.b[classIdx] = clamp(NN_B.b[classIdx] + η * reward * 0.5, lo, hi);
+}
+
+export function spawnCompetitor() {
+  resetCompetitor();
+  competitor.enabled = true;
+  competitor.robot = {
+    x: state.W * 0.7, y: state.H * 0.5,
+    vx: 0, vy: 0, angle: 0, target: null, state: 'idle', bt: 0,
+  };
+}
+
+export function despawnCompetitor() {
+  competitor.enabled = false;
+  competitor.robot = null;
+}
+
+export function stepCompetitor() {
+  if (!competitor.enabled || !competitor.robot) return;
+  const r = competitor.robot;
+
+  // Visão B
+  let nearest = null, nd = Infinity;
+  for (const o of state.objects) {
+    const d = dist(r, o);
+    if (d < DETECT_R && d < nd) { nearest = o; nd = d; }
+  }
+  if (nearest) {
+    const x = buildInput(nearest.rule.hex, nd);
+    forwardB(x);
+    r.target = nearest;
+    r.state = nearest.rule.flee ? 'flee' : 'chase';
+  } else {
+    r.target = null; r.state = 'idle';
+  }
+
+  const MV = 3.6, AC = 0.32, FR = 0.9;
+  if (r.state === 'idle') { r.vx += rand(-.2, .2); r.vy += rand(-.2, .2); }
+  else if (r.state === 'chase' && r.target) {
+    const dx = r.target.x - r.x, dy = r.target.y - r.y, d = Math.hypot(dx, dy) || 1;
+    r.vx += dx / d * AC; r.vy += dy / d * AC; r.angle = Math.atan2(dy, dx);
+  } else if (r.state === 'flee' && r.target) {
+    const dx = r.x - r.target.x, dy = r.y - r.target.y, d = Math.hypot(dx, dy) || 1;
+    r.vx += dx / d * AC; r.vy += dy / d * AC;
+  }
+  r.vx *= FR; r.vy *= FR;
+  const spd = Math.hypot(r.vx, r.vy);
+  if (spd > MV) { r.vx = r.vx / spd * MV; r.vy = r.vy / spd * MV; }
+  r.x = clamp(r.x + r.vx, ROBOT_R, state.W - ROBOT_R);
+  r.y = clamp(r.y + r.vy, ROBOT_R, state.H - ROBOT_R);
+  r.bt++;
+}
+
+// Chamado pela sim quando B colide com objeto (gerenciado internamente aqui)
+export function checkCompetitorCollisions() {
+  if (!competitor.enabled || !competitor.robot) return;
+  const r = competitor.robot;
+  for (let i = state.objects.length - 1; i >= 0; i--) {
+    const o = state.objects[i];
+    if (dist(r, o) < ROBOT_R + OBJ_R - 5) {
+      competitor.score += o.rule.pts;
+      const x = buildInput(o.rule.hex, 0);
+      const probs = forwardB(x);
+      const predicted = probs.reduce((iMax, v, idx, arr) => v > arr[iMax] ? idx : iMax, 0);
+      const truth = trueClass(o.rule.hex);
+      const correct = predicted === truth;
+      learnB(truth, correct ? +1 : -1, x);
+      recordCompetitorOutcome(correct);
+
+      // ── Efeitos premium do Robô B (laranja distintivo) ──
+      const isFlee = o.rule.flee;
+      // Glitch leve no arena (B usa tom dourado/laranja para diferenciar de A)
+      state.glitchEffect = Math.max(state.glitchEffect, 0.32);
+      state.glitchColor = isFlee ? '255,80,40' : '255,170,58';
+      // Partículas
+      burst(o.x, o.y, isFlee ? 'rgba(255,90,40,' : 'rgba(255,170,58,', 18);
+      // Floating points (em laranja para identificar o agente)
+      addFloat(o.x, o.y - 22, (o.rule.pts > 0 ? '+' : '') + o.rule.pts + ' [B]', isFlee ? '#ff6428' : '#ffaa3a');
+      // Beep mais grave / alternativo
+      playBeep(isFlee ? 130 : 540, 'triangle', 110);
+
+      // remove objeto (ele foi consumido por B)
+      state.objects.splice(i, 1);
+    }
+  }
+}
