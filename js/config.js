@@ -1,7 +1,8 @@
 // =============================================================================
-// CONFIG — constantes, regras e parâmetros do simulador
+// CONFIG v7 — Premium Edition
 // =============================================================================
 export const CONFIG = {
+  VERSION: 'v7.0',
   ROBOT_R: 18,
   OBJ_R: 12,
   DETECT_R: 110,
@@ -11,14 +12,17 @@ export const CONFIG = {
   TEACHER_SPEED_FACTOR: 0.4,
   MAX_LOG_ENTRIES: 60,
   MAX_HISTORY: 80,
-  STEP_TIME_S: 5,            // segundos por passo automático
-  LEARNING_RATE: 0.05,       // taxa de aprendizado Hebbian
-  WEIGHT_CLAMP: [-1.5, 1.5], // limites dos pesos
+  STEP_TIME_S: 5,
+  LEARNING_RATE: 0.05,
+  WEIGHT_CLAMP: [-1.5, 1.5],
   ADAPT_CLAMP: [0.5, 1.5],
-  RECORD_KEY: 'cn6_highscore',
+  RECORD_KEY: 'cn7_highscore',
+  WEIGHTS_KEY: 'cn7_weights',          // pesos exportáveis para webcam
+  TELEMETRY_MAX: 60,                    // pontos do gráfico de acurácia
+  COMPETITOR_LR: 0.12,                  // robô B aprende mais agressivo
 };
 
-// ── Regras de cor (CIANO corrigido para 165–195°, faixa 15–40 era LARANJA) ──
+// ── Regras de cor ──
 export const RULES = [
   { name: 'VERMELHO', hex: '#ff2255', action: 'CAPTURAR',  pts: +10, flee: false, hueRanges: [[0, 15], [345, 360]], minS: .30, minV: .20 },
   { name: 'LARANJA',  hex: '#ff8a1a', action: 'APROXIMAR', pts: +6,  flee: false, hueRanges: [[15, 40]],            minS: .35, minV: .25 },
@@ -55,4 +59,11 @@ export const CLASS_STEPS = [
     desc: 'Após cada colisão, atualizamos os pesos\nda classe vencedora na direção das entradas.\nReforço positivo se acertou, negativo se errou.',
     formula: 'ΔW[c][j] = η · r · x[j]\nW[c][j] = clamp( W[c][j] + ΔW, −1.5, +1.5 )\nη = 0.05  ·  r ∈ {−1, +1}'
   },
+];
+
+export const MODES = [
+  { id: 'train',   icon: '🤖', label: 'Treino',       title: 'Arena de Treino' },
+  { id: 'class',   icon: '🎓', label: 'Sala de Aula', title: 'Sala de Aula — IA Adaptativa' },
+  { id: 'compete', icon: '⚔️', label: 'Competição',   title: 'Modo Competição — A vs B' },
+  { id: 'vision',  icon: '📷', label: 'Visão Real',   title: 'Visão Real — Webcam' },
 ];

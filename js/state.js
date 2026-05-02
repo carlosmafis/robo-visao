@@ -1,41 +1,103 @@
 // =============================================================================
-// STATE — estado global compartilhado
+// STATE v7 — estado global + telemetria + competidor
 // =============================================================================
 import { CONFIG, RULES } from './config.js';
 
-// Pesos adaptativos exibidos no painel (atalho didático: H, S, V, D)
-export const adaptive = {
-  weights: [1, 1, 1, 1],
-  learnCount: 0,
-};
+const seedW = () => RULES.map(() => Array(4).fill(0).map(() => (Math.random() - 0.5) * 0.3));
+const seedB = () => RULES.map(() => 0);
 
-// ── Rede neural real ──
-// Matriz W [n_classes × 4]  +  vetor de bias [n_classes]
-// Inicializada perto de zero (treina-se em runtime)
+function biasedSeed(W, b) {
+  RULES.forEach((rule, i) => {
+    const ranges = rule.hueRanges;
+    const center = ranges[0][0] === 0 && ranges.length > 1
+      ? 5
+      : (ranges[0][0] + ranges[0][1]) / 2;
+    const huePref = center / 360;
+    W[i][0] = 0.6 - Math.abs(huePref - 0.5) * 0.4 + (Math.random() - 0.5) * 0.1;
+    W[i][1] = 0.4 + (Math.random() - 0.5) * 0.2;
+    W[i][2] = 0.3 + (Math.random() - 0.5) * 0.2;
+    W[i][3] = 0.2 + (Math.random() - 0.5) * 0.2;
+    b[i] = -0.3 - Math.abs(huePref - 0.5) * 0.5;
+  });
+}
+
+export const adaptive = { weights: [1, 1, 1, 1], learnCount: 0 };
+
 export const NN = {
-  W: RULES.map(() => Array(4).fill(0).map(() => (Math.random() - 0.5) * 0.3)),
-  b: RULES.map(() => 0),
+  W: seedW(), b: seedB(),
   lastInput: [0, 0, 0, 0],
   lastLogits: RULES.map(() => 0),
   lastProbs: RULES.map(() => 0),
 };
+biasedSeed(NN.W, NN.b);
 
-// Inicializa pesos com viés didático: cada classe "gosta" do seu matiz central
-(function seedWeights() {
-  RULES.forEach((rule, i) => {
-    const ranges = rule.hueRanges;
-    const center = ranges[0][0] === 0 && ranges.length > 1
-      ? 5 // vermelho ~ 0°
-      : (ranges[0][0] + ranges[0][1]) / 2;
-    const huePref = center / 360;
-    // peso de matiz proporcional à distância do alvo
-    NN.W[i][0] = 0.6 - Math.abs(huePref - 0.5) * 0.4 + (Math.random() - 0.5) * 0.1;
-    NN.W[i][1] = 0.4 + (Math.random() - 0.5) * 0.2;  // saturação ajuda
-    NN.W[i][2] = 0.3 + (Math.random() - 0.5) * 0.2;  // brilho
-    NN.W[i][3] = 0.2 + (Math.random() - 0.5) * 0.2;  // proximidade
-    NN.b[i] = -0.3 - Math.abs(huePref - 0.5) * 0.5;  // bias inicial baseado em distância de cor
-  });
-})();
+// Telemetria de aprendizado
+export const telemetry = {
+  hits: 0,
+  total: 0,
+  accuracyHistory: [],          // [{t, acc}]
+  perClass: RULES.map(() => ({ hits: 0, total: 0 })),
+  windowSize: 20,
+  recent: [],                   // últimos N acertos (1) ou erros (0)
+};
+
+export function resetTelemetry() {
+  telemetry.hits = 0;
+  telemetry.total = 0;
+  telemetry.accuracyHistory.length = 0;
+  telemetry.perClass = RULES.map(() => ({ hits: 0, total: 0 }));
+  telemetry.recent.length = 0;
+}
+
+export function recordOutcome(classIdx, correct) {
+  telemetry.total++;
+  telemetry.perClass[classIdx].total++;
+  if (correct) {
+    telemetry.hits++;
+    telemetry.perClass[classIdx].hits++;
+  }
+  telemetry.recent.push(correct ? 1 : 0);
+  if (telemetry.recent.length > telemetry.windowSize) telemetry.recent.shift();
+  const winAcc = telemetry.recent.reduce((a, b) => a + b, 0) / telemetry.recent.length;
+  telemetry.accuracyHistory.push(winAcc);
+  if (telemetry.accuracyHistory.length > CONFIG.TELEMETRY_MAX) telemetry.accuracyHistory.shift();
+}
+
+// ── Competidor (robô B com pesos próprios) ──
+export const NN_B = {
+  W: seedW(), b: seedB(),
+  lastProbs: RULES.map(() => 0),
+};
+biasedSeed(NN_B.W, NN_B.b);
+
+export const competitor = {
+  enabled: false,
+  // Robô B vive no mesmo arena, posição independente
+  robot: null,
+  score: 0, hits: 0, total: 0,
+  accuracyHistory: [],
+  recent: [],
+};
+
+export function resetCompetitor() {
+  competitor.score = 0;
+  competitor.hits = 0;
+  competitor.total = 0;
+  competitor.accuracyHistory.length = 0;
+  competitor.recent.length = 0;
+  // Reseed
+  NN_B.W = seedW(); NN_B.b = seedB(); biasedSeed(NN_B.W, NN_B.b);
+}
+
+export function recordCompetitorOutcome(correct) {
+  competitor.total++;
+  if (correct) competitor.hits++;
+  competitor.recent.push(correct ? 1 : 0);
+  if (competitor.recent.length > 20) competitor.recent.shift();
+  const acc = competitor.recent.reduce((a, b) => a + b, 0) / competitor.recent.length;
+  competitor.accuracyHistory.push(acc);
+  if (competitor.accuracyHistory.length > CONFIG.TELEMETRY_MAX) competitor.accuracyHistory.shift();
+}
 
 export const state = {
   W: 0, H: 0,
@@ -51,10 +113,36 @@ export const state = {
   particles: [], floatLabels: [],
   speedIdx: 0,
   paused: false,
-  explainMode: false,
+  mode: 'train',                 // train | class | compete | vision
   currentStep: 0,
   synapsePackets: [],
   teacherPhase: 0,
   packetSpawnTimer: 0,
   best: parseInt(localStorage.getItem(CONFIG.RECORD_KEY) || '0', 10),
 };
+
+// Helpers para snapshot/restore de pesos (export para webcam)
+export function snapshotWeights() {
+  return {
+    W: NN.W.map(r => r.slice()),
+    b: NN.b.slice(),
+    learnCount: adaptive.learnCount,
+    timestamp: Date.now(),
+    version: CONFIG.VERSION,
+  };
+}
+
+export function saveWeightsToLocalStorage() {
+  try {
+    localStorage.setItem(CONFIG.WEIGHTS_KEY, JSON.stringify(snapshotWeights()));
+    return true;
+  } catch { return false; }
+}
+
+export function loadWeightsFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(CONFIG.WEIGHTS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}

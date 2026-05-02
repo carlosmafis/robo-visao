@@ -4,21 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
   <meta name="theme-color" content="#060b1a" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <title>Combate Neural v6 — Sala de Aula de IA Adaptativa</title>
-  <meta name="description" content="Simulador interativo de visão computacional e rede neural adaptativa: um robô aprende a classificar cores em HSV em tempo real. Modo Sala de Aula passo a passo." />
+  <title>Combate Neural v7 — IA Adaptativa Premium</title>
+  <meta name="description" content="Simulador interativo de visão computacional e rede neural adaptativa: um robô aprende a classificar cores em HSV em tempo real, com sala de aula, modo competição e visão real via webcam." />
   <meta name="author" content="Prof. Carlos Adriano" />
   <link rel="canonical" href="https://carlosmafis.github.io/robo-visao/" />
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="Combate Neural v6 — IA Adaptativa em Sala de Aula" />
-  <meta property="og:description" content="Veja uma rede neural real (perceptron multi-classe + softmax + Hebbian) aprendendo cores ao vivo." />
+  <meta property="og:title" content="Combate Neural v7 — Premium Edition" />
+  <meta property="og:description" content="4 modos: Treino, Sala de Aula, Competição (A vs B) e Visão Real (webcam) com perceptron multi-classe + softmax + Hebbian." />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="pt_BR" />
 
-  <!-- Performance / preconnect -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" />
@@ -26,26 +24,12 @@
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
 
-  <!-- CSP básico (compatível com fontes Google e blobs SVG) -->
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    img-src 'self' data: blob:;
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    font-src https://fonts.gstatic.com;
-    script-src 'self';
-    connect-src 'self';
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self';
-  " />
-
-  <!-- JSON-LD (SEO educacional) -->
   <script type="application/ld+json">
   {
     "@context":"https://schema.org",
     "@type":"LearningResource",
-    "name":"Combate Neural — Sala de Aula de IA Adaptativa",
-    "description":"Simulação interativa de rede neural perceptron com aprendizado por reforço Hebbian, visão computacional HSV e visualização sináptica.",
+    "name":"Combate Neural v7 — Premium",
+    "description":"Simulação interativa de rede neural perceptron com aprendizado Hebbian, classificação HSV, modo competição e visão real via webcam.",
     "educationalLevel":"Ensino Médio / Técnico / Graduação",
     "learningResourceType":"Simulação interativa",
     "inLanguage":"pt-BR",
@@ -57,15 +41,18 @@
 </head>
 
 <body>
-<a href="#arena-wrap" class="skip-link">Pular para a arena</a>
+<a href="#main-area" class="skip-link">Pular para a arena</a>
 
 <div id="root">
 
+  <!-- ════════ TOPBAR ════════ -->
   <header id="topbar" role="banner">
     <div id="topbar-left">
-      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false">
+      <button id="sidebar-toggle" class="icon-btn" aria-label="Recolher menu lateral" type="button">
+        <span aria-hidden="true">☰</span>
+      </button>
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
         <rect x="2" y="2" width="28" height="28" rx="3" stroke="currentColor" stroke-width="1.5" opacity=".4"/>
-        <rect x="8" y="8" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1" fill="currentColor" fill-opacity=".1"/>
         <circle cx="16" cy="16" r="4" fill="currentColor" opacity=".8"/>
         <line x1="2" y1="16" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/>
         <line x1="24" y1="16" x2="30" y2="16" stroke="currentColor" stroke-width="1.5"/>
@@ -73,192 +60,301 @@
         <line x1="16" y1="24" x2="16" y2="30" stroke="currentColor" stroke-width="1.5"/>
       </svg>
       <h1>COMBATE NEURAL</h1>
-      <span id="version-badge" aria-label="Versão 6.0">v6.0</span>
+      <span id="version-badge">v7.0</span>
+      <span id="mode-title" class="mode-title">Arena de Treino</span>
     </div>
-    <nav id="topbar-right" aria-label="Controles principais">
-      <button class="icon-btn" id="btnPlay" type="button" aria-label="Pausar simulação" aria-keyshortcuts="Space"><span aria-hidden="true">⏸</span> PAUSAR</button>
-      <button class="icon-btn" id="btnSpeed" type="button" aria-label="Alterar velocidade"><span aria-hidden="true">⚡</span> NORMAL</button>
-      <button class="icon-btn" id="btnTeacher" type="button" aria-label="Abrir sala de aula" aria-pressed="false"><span aria-hidden="true">🎓</span> SALA DE AULA</button>
-      <button class="icon-btn" id="btnMusic" type="button" aria-label="Tocar música" aria-pressed="false"><span aria-hidden="true">🎵</span> MÚSICA</button>
-      <button class="icon-btn" id="btnReset" type="button" aria-label="Reiniciar partida"><span aria-hidden="true">↺</span> RESET</button>
-      <button class="icon-btn" id="btnFS" type="button" aria-label="Tela cheia"><span aria-hidden="true">⛶</span></button>
+    <nav id="topbar-right" aria-label="Controles">
+      <button class="icon-btn" id="btnPlay" type="button"><span aria-hidden="true">⏸</span> PAUSAR</button>
+      <button class="icon-btn" id="btnSpeed" type="button"><span aria-hidden="true">⚡</span> NORMAL</button>
+      <button class="icon-btn" id="btnReset" type="button"><span aria-hidden="true">↺</span> RESET</button>
+      <button class="icon-btn" id="btnMusic" type="button"><span aria-hidden="true">🎵</span> MÚSICA</button>
+      <button class="icon-btn" id="btnFS" type="button"><span aria-hidden="true">⛶</span></button>
     </nav>
   </header>
 
-  <main id="body">
-    <section id="arena-wrap" aria-label="Arena de simulação">
-      <canvas id="arena" aria-label="Simulação ao vivo do robô"></canvas>
-    </section>
+  <div id="layout">
 
-    <!-- ───── PAINEL LATERAL NORMAL ───── -->
-    <aside id="panel" aria-label="Processador neural">
-      <div class="panel-header">
-        <div class="panel-title">PROCESSADOR NEURAL</div>
-        <div class="panel-badge"><span class="live-dot" aria-hidden="true"></span>AO VIVO</div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-cell"><div class="stat-lbl">Pontuação</div><div class="stat-val" id="pts">0</div></div>
-        <div class="stat-cell"><div class="stat-lbl">Capturados</div><div class="stat-val" id="col">0</div></div>
-        <div class="stat-cell"><div class="stat-lbl">🏆 Recorde</div><div class="stat-val record" id="best">0</div></div>
-        <div class="stat-cell"><div class="stat-lbl">Escaparam</div><div class="stat-val" id="fug">0</div></div>
-        <div class="stat-cell"><div class="stat-lbl">Dano</div><div class="stat-val danger-val" id="dmg">0</div></div>
-        <div class="stat-cell"><div class="stat-lbl">Aprend.</div><div class="stat-val" id="learn-count" style="font-size:14px">0</div></div>
-      </div>
-
-      <div class="section">
-        <div class="sec-label">PESOS ADAPTATIVOS</div>
-        <div id="weights-wrap">
-          <div class="weight-cell"><div class="weight-lbl">H/Matiz</div><div class="weight-val" id="w0">1.00</div></div>
-          <div class="weight-cell"><div class="weight-lbl">S/Sat</div><div class="weight-val" id="w1">1.00</div></div>
-          <div class="weight-cell"><div class="weight-lbl">V/Brilho</div><div class="weight-val" id="w2">1.00</div></div>
-          <div class="weight-cell"><div class="weight-lbl">D/Dist</div><div class="weight-val" id="w3">1.00</div></div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="sec-label">MATRIZ DE PESOS (6×4)</div>
-        <div id="weight-heatmap" role="img" aria-label="Heatmap dos pesos sinápticos por classe"></div>
-        <div class="heatmap-legend">
-          <span>−</span>
-          <span class="heatmap-bar" aria-hidden="true"></span>
-          <span>+</span>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="sec-label">REDE SINÁPTICA</div>
-        <div id="neural-viz-small">
-          <svg id="neural-svg-small" aria-hidden="true"></svg>
-          <div class="neural-layer">
-            <div class="layer-label">↳ Entradas</div>
-            <div class="neuron-row"><span class="neuron-label">H°</span><div class="neuron" id="n-h">H</div><span class="neuron-value" id="nv-h">—</span></div>
-            <div class="neuron-row"><span class="neuron-label">S%</span><div class="neuron" id="n-s">S</div><span class="neuron-value" id="nv-s">—</span></div>
-            <div class="neuron-row"><span class="neuron-label">V%</span><div class="neuron" id="n-v">V</div><span class="neuron-value" id="nv-v">—</span></div>
-            <div class="neuron-row"><span class="neuron-label">Dist</span><div class="neuron" id="n-d">D</div><span class="neuron-value" id="nv-d">—</span></div>
-          </div>
-          <div class="neural-layer">
-            <div class="layer-label">↳ Saídas (softmax)</div>
-            <div id="neural-output-small"><div class="none-msg">AGUARDANDO...</div></div>
-          </div>
-        </div>
-      </div>
-
-      <div id="chart-wrap">
-        <div id="chart-label">EVOLUÇÃO DA PONTUAÇÃO</div>
-        <canvas id="chart" aria-label="Gráfico da pontuação ao longo do tempo"></canvas>
-      </div>
-
-      <div class="section">
-        <div class="sec-label">ANÁLISE HSV</div>
-        <div id="near-none" class="none-msg">Nenhum alvo no alcance</div>
-        <div id="near-info" hidden>
-          <div class="hsv-row">
-            <div class="hsv-cell"><div class="hsv-lbl">H°</div><div class="hsv-val" id="hval">0</div></div>
-            <div class="hsv-cell"><div class="hsv-lbl">S%</div><div class="hsv-val" id="sval">0</div></div>
-            <div class="hsv-cell"><div class="hsv-lbl">V%</div><div class="hsv-val" id="vval">0</div></div>
-            <div class="hsv-cell"><div class="hsv-lbl">Dist</div><div class="hsv-val" id="dval">0</div></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="sec-label">ATIVAÇÕES (softmax)</div>
-        <div id="scores-panel"></div>
-      </div>
-
-      <div class="section">
-        <div class="sec-label">DECISÃO</div>
-        <div class="decision-box" id="dec-box">
-          <div class="dec-name" id="dec-name">ESCANEANDO...</div>
-          <div class="dec-sub" id="dec-sub">Aguardando detecção</div>
-          <div class="dec-margin" id="dec-margin"></div>
-        </div>
-        <div class="conf-row"><span class="conf-label">CONFIANÇA</span><span class="conf-pct" id="conf-pct">—</span></div>
-        <div class="bar-bg"><div class="bar-fill" id="conf-bar" style="width:0%;background:var(--neon)"></div></div>
-      </div>
-
-      <div class="log-header">
-        <span class="sec-label" style="margin:0">EVENTOS</span>
-        <button class="log-clear" id="clearLog" type="button">LIMPAR</button>
-      </div>
-      <div class="log-wrap" id="log" role="log" aria-live="polite" aria-atomic="false"></div>
-
-      <div class="panel-controls">
-        <button class="ctrl-btn" id="btnPlay2" type="button">Pausar</button>
-        <button class="ctrl-btn" id="btnSpeed2" type="button">Normal</button>
-        <button class="ctrl-btn" id="btnReset2" type="button">Reset</button>
+    <!-- ════════ SIDEBAR ════════ -->
+    <aside id="sidebar" aria-label="Menu de modos">
+      <ul class="sb-list" role="menu">
+        <li class="sb-item active" data-mode="train" role="menuitem" tabindex="0">
+          <span class="sb-icon">🤖</span>
+          <span class="sb-label">Treino</span>
+          <span class="sb-key">1</span>
+        </li>
+        <li class="sb-item" data-mode="class" role="menuitem" tabindex="0">
+          <span class="sb-icon">🎓</span>
+          <span class="sb-label">Sala de Aula</span>
+          <span class="sb-key">2</span>
+        </li>
+        <li class="sb-item" data-mode="compete" role="menuitem" tabindex="0">
+          <span class="sb-icon">⚔️</span>
+          <span class="sb-label">Competição</span>
+          <span class="sb-key">3</span>
+        </li>
+        <li class="sb-item" data-mode="vision" role="menuitem" tabindex="0">
+          <span class="sb-icon">📷</span>
+          <span class="sb-label">Visão Real</span>
+          <span class="sb-key">4</span>
+        </li>
+      </ul>
+      <div class="sb-footer">
+        <div class="sb-version">PROF. CARLOS ADRIANO</div>
+        <div class="sb-tag">PERCEPTRON · HEBBIAN · SOFTMAX</div>
       </div>
     </aside>
 
-    <!-- ════════ 🎓 SALA DE AULA ════════ -->
-    <section id="classroom" aria-label="Sala de Aula" hidden>
-      <div id="class-banner">
-        <h2>🎓 SALA DE AULA — IA NEURAL</h2>
-        <div id="class-speed-badge">🐢 MODO LENTO ATIVO</div>
-        <button id="class-close-btn" type="button">✕ SAIR DA SALA</button>
-      </div>
+    <!-- ════════ MAIN AREA ════════ -->
+    <main id="main-area">
 
-      <div id="class-body">
-        <div id="class-arena-col">
-          <div id="class-arena-header">
-            <span>🤖 ARENA — VELOCIDADE REDUZIDA</span>
-            <span id="class-tick-display">T: 00:00</span>
-          </div>
-          <div id="class-arena-inner"></div>
+      <!-- ── VIEW: TREINO ── -->
+      <section class="view view-train" data-view="train">
+        <div id="arena-wrap" aria-label="Arena de simulação">
+          <canvas id="arena" aria-label="Simulação ao vivo"></canvas>
         </div>
 
-        <div id="class-right">
-          <div id="class-step-box">
-            <div id="class-step-num">PASSO 1 DE 5</div>
-            <div id="class-step-title">Aguardando alvo...</div>
-            <div id="class-step-desc">O robô está explorando o ambiente. Quando um objeto entrar no raio de detecção (círculo tracejado), a análise começa.</div>
-            <div id="class-step-formula"></div>
+        <aside id="panel" aria-label="Processador neural">
+          <div class="panel-header">
+            <div class="panel-title">PROCESSADOR NEURAL</div>
+            <div class="panel-badge"><span class="live-dot"></span>AO VIVO</div>
           </div>
 
-          <div id="class-neural-wrap">
-            <div id="class-neural-title">REDE NEURAL SINÁPTICA</div>
-            <div id="class-neural-svg-wrap">
-              <svg id="class-neural-svg" viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" aria-label="Visualização da rede neural"></svg>
+          <div class="stats-grid">
+            <div class="stat-cell"><div class="stat-lbl">Pontos</div><div class="stat-val" id="pts">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">Capturados</div><div class="stat-val" id="col">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">🏆 Recorde</div><div class="stat-val record" id="best">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">Escaparam</div><div class="stat-val" id="fug">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">Dano</div><div class="stat-val danger-val" id="dmg">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">Aprend.</div><div class="stat-val" id="learn-count" style="font-size:14px">0</div></div>
+          </div>
+
+          <!-- TELEMETRIA — novo -->
+          <div class="section">
+            <div class="sec-label">📈 ACURÁCIA DO MODELO</div>
+            <canvas id="telemetry-spark" aria-label="Sparkline de acurácia"></canvas>
+            <div id="telemetry-summary" class="telemetry-sum"></div>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">🎯 ACERTO POR COR</div>
+            <div id="per-class-bars"></div>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">PESOS ADAPTATIVOS</div>
+            <div id="weights-wrap">
+              <div class="weight-cell"><div class="weight-lbl">H</div><div class="weight-val" id="w0">1.00</div></div>
+              <div class="weight-cell"><div class="weight-lbl">S</div><div class="weight-val" id="w1">1.00</div></div>
+              <div class="weight-cell"><div class="weight-lbl">V</div><div class="weight-val" id="w2">1.00</div></div>
+              <div class="weight-cell"><div class="weight-lbl">D</div><div class="weight-val" id="w3">1.00</div></div>
             </div>
           </div>
 
-          <div id="class-hsv-wrap">
-            <div class="sec-label" style="margin-bottom:8px">ANÁLISE HSV DO ALVO</div>
-            <div class="class-hsv-row">
-              <div class="class-hsv-cell" id="chsv-h"><div class="class-hsv-lbl">H — MATIZ</div><div class="class-hsv-val" id="chsv-hv">—</div><div class="class-hsv-meaning" id="chsv-hm">identifica a cor</div></div>
-              <div class="class-hsv-cell" id="chsv-s"><div class="class-hsv-lbl">S — SAT.</div><div class="class-hsv-val" id="chsv-sv">—</div><div class="class-hsv-meaning" id="chsv-sm">intensidade</div></div>
-              <div class="class-hsv-cell" id="chsv-v"><div class="class-hsv-lbl">V — BRILHO</div><div class="class-hsv-val" id="chsv-vv">—</div><div class="class-hsv-meaning" id="chsv-vm">luminosidade</div></div>
-              <div class="class-hsv-cell" id="chsv-d"><div class="class-hsv-lbl">D — DIST.</div><div class="class-hsv-val" id="chsv-dv">—</div><div class="class-hsv-meaning" id="chsv-dm">em pixels</div></div>
+          <div class="section">
+            <div class="sec-label">MATRIZ DE PESOS W (7×4)</div>
+            <div id="weight-heatmap" role="img"></div>
+            <div class="heatmap-legend"><span>−</span><span class="heatmap-bar"></span><span>+</span></div>
+          </div>
+
+          <div id="chart-wrap">
+            <div id="chart-label">EVOLUÇÃO DA PONTUAÇÃO</div>
+            <canvas id="chart"></canvas>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">ANÁLISE HSV</div>
+            <div id="near-none" class="none-msg">Nenhum alvo no alcance</div>
+            <div id="near-info" hidden>
+              <div class="hsv-row">
+                <div class="hsv-cell"><div class="hsv-lbl">H°</div><div class="hsv-val" id="hval">0</div></div>
+                <div class="hsv-cell"><div class="hsv-lbl">S%</div><div class="hsv-val" id="sval">0</div></div>
+                <div class="hsv-cell"><div class="hsv-lbl">V%</div><div class="hsv-val" id="vval">0</div></div>
+                <div class="hsv-cell"><div class="hsv-lbl">Dist</div><div class="hsv-val" id="dval">0</div></div>
+              </div>
             </div>
           </div>
 
-          <div id="class-activations">
-            <div class="sec-label" style="margin-bottom:8px">NEURÔNIOS DE SAÍDA — ATIVAÇÃO</div>
-            <div id="class-act-list"></div>
+          <div class="section">
+            <div class="sec-label">ATIVAÇÕES (softmax)</div>
+            <div id="scores-panel"></div>
           </div>
 
-          <div id="class-decision">
-            <div class="sec-label" style="margin-bottom:8px">DECISÃO FINAL</div>
-            <div id="class-dec-box">
-              <div id="class-dec-name">—</div>
-              <div id="class-dec-rationale">Aguardando análise...</div>
+          <div class="section">
+            <div class="sec-label">DECISÃO</div>
+            <div class="decision-box" id="dec-box">
+              <div class="dec-name" id="dec-name">ESCANEANDO...</div>
+              <div class="dec-sub" id="dec-sub">Aguardando detecção</div>
+              <div class="dec-margin" id="dec-margin"></div>
             </div>
+            <div class="conf-row"><span class="conf-label">CONFIANÇA</span><span class="conf-pct" id="conf-pct">—</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="conf-bar" style="width:0%;background:var(--neon)"></div></div>
           </div>
 
-          <div id="class-footer">
-            <span id="class-footer-tip">💡 Use ← → para navegar entre os passos · Espaço pausa</span>
-            <div id="class-step-nav">
-              <button class="nav-btn" id="nav-prev" type="button">◀ ANTERIOR</button>
-              <button class="nav-btn" id="nav-next" type="button">PRÓXIMO ▶</button>
+          <div class="log-header">
+            <span class="sec-label" style="margin:0">EVENTOS</span>
+            <button class="log-clear" id="clearLog" type="button">LIMPAR</button>
+          </div>
+          <div class="log-wrap" id="log" role="log" aria-live="polite"></div>
+        </aside>
+      </section>
+
+      <!-- ── VIEW: SALA DE AULA ── -->
+      <section class="view view-class" data-view="class" hidden>
+        <div id="class-banner">
+          <h2>🎓 SALA DE AULA — IA NEURAL</h2>
+          <span id="class-speed-badge">🐢 MODO LENTO ATIVO</span>
+        </div>
+        <div id="class-body">
+          <div id="class-arena-col">
+            <div id="class-arena-header">
+              <span>🤖 ARENA — VELOCIDADE REDUZIDA</span>
+              <span id="class-tick-display">T: 00:00</span>
+            </div>
+            <div id="class-arena-inner"></div>
+          </div>
+
+          <div id="class-right">
+            <div id="class-step-box">
+              <div id="class-step-num">PASSO 1 DE 5</div>
+              <div id="class-step-title">Aguardando alvo...</div>
+              <div id="class-step-desc">O robô está explorando o ambiente.</div>
+              <div id="class-step-formula"></div>
+            </div>
+
+            <!-- MATH LIVE — novo painel didático -->
+            <div class="section" id="math-live-section">
+              <div class="sec-label">🧮 MATEMÁTICA AO VIVO</div>
+              <div id="math-live"></div>
+            </div>
+
+            <div id="class-hsv-wrap">
+              <div class="sec-label" style="margin-bottom:8px">ANÁLISE HSV DO ALVO</div>
+              <div class="class-hsv-row">
+                <div class="class-hsv-cell" id="chsv-h"><div class="class-hsv-lbl">H</div><div class="class-hsv-val" id="chsv-hv">—</div></div>
+                <div class="class-hsv-cell" id="chsv-s"><div class="class-hsv-lbl">S</div><div class="class-hsv-val" id="chsv-sv">—</div></div>
+                <div class="class-hsv-cell" id="chsv-v"><div class="class-hsv-lbl">V</div><div class="class-hsv-val" id="chsv-vv">—</div></div>
+                <div class="class-hsv-cell" id="chsv-d"><div class="class-hsv-lbl">D</div><div class="class-hsv-val" id="chsv-dv">—</div></div>
+              </div>
+            </div>
+
+            <div id="class-activations">
+              <div class="sec-label" style="margin-bottom:8px">ATIVAÇÕES — SOFTMAX</div>
+              <div id="class-act-list"></div>
+            </div>
+
+            <div id="class-decision">
+              <div class="sec-label" style="margin-bottom:8px">DECISÃO FINAL</div>
+              <div id="class-dec-box">
+                <div id="class-dec-name">—</div>
+                <div id="class-dec-rationale">Aguardando análise...</div>
+              </div>
+            </div>
+
+            <div id="class-footer">
+              <span>💡 ← → para navegar · Espaço pausa</span>
+              <div id="class-step-nav">
+                <button class="nav-btn" id="nav-prev" type="button">◀ ANTERIOR</button>
+                <button class="nav-btn" id="nav-next" type="button">PRÓXIMO ▶</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-  </main>
+      </section>
 
-  <footer id="footer">PROF. CARLOS ADRIANO &nbsp;·&nbsp; SISTEMA DE COMBATE NEURAL v6.0 &nbsp;·&nbsp; PERCEPTRON + HEBBIAN + SOFTMAX</footer>
+      <!-- ── VIEW: COMPETIÇÃO ── -->
+      <section class="view view-compete" data-view="compete" hidden>
+        <div class="compete-banner">
+          <h2>⚔️ COMPETIÇÃO — ROBÔ A vs ROBÔ B</h2>
+          <button class="icon-btn" id="btn-comp-reset" type="button">↺ REINICIAR DUELO</button>
+        </div>
+        <div id="compete-body">
+          <div id="compete-arena-col">
+            <div id="compete-arena-inner"></div>
+          </div>
+          <aside id="compete-panel">
+            <div class="comp-card comp-a">
+              <div class="comp-card-head">
+                <span class="comp-dot" style="background:#00ffa3;box-shadow:0 0 12px #00ffa3"></span>
+                <span>ROBÔ A · η=0.05 (cauteloso)</span>
+              </div>
+              <div class="comp-stats">
+                <div><div class="comp-lbl">Pontos</div><div class="comp-val" id="comp-score-a">0</div></div>
+                <div><div class="comp-lbl">Acurácia</div><div class="comp-val" id="comp-acc-a">0%</div></div>
+                <div><div class="comp-lbl">Acertos</div><div class="comp-val" id="comp-hits-a">0/0</div></div>
+              </div>
+            </div>
+            <div class="comp-card comp-b">
+              <div class="comp-card-head">
+                <span class="comp-dot" style="background:#ffaa3a;box-shadow:0 0 12px #ffaa3a"></span>
+                <span>ROBÔ B · η=0.12 (agressivo)</span>
+              </div>
+              <div class="comp-stats">
+                <div><div class="comp-lbl">Pontos</div><div class="comp-val" id="comp-score-b">0</div></div>
+                <div><div class="comp-lbl">Acurácia</div><div class="comp-val" id="comp-acc-b">0%</div></div>
+                <div><div class="comp-lbl">Acertos</div><div class="comp-val" id="comp-hits-b">0/0</div></div>
+              </div>
+            </div>
+            <div class="comp-chart-wrap">
+              <div class="sec-label">📈 CURVA DE APRENDIZADO (janela móvel)</div>
+              <canvas id="compete-chart"></canvas>
+              <div class="comp-legend">
+                <span><span class="lg-dot" style="background:#00ffa3"></span> A (η=0.05)</span>
+                <span><span class="lg-dot" style="background:#ffaa3a"></span> B (η=0.12)</span>
+              </div>
+            </div>
+            <div class="comp-explain">
+              <strong>🧪 Experimento:</strong> dois robôs com a mesma arquitetura, mas <em>taxas de aprendizado</em> diferentes. O B aprende mais rápido — mas pode oscilar mais. Compare as curvas.
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ── VIEW: VISÃO REAL (WEBCAM) ── -->
+      <section class="view view-vision" data-view="vision" hidden>
+        <div class="vision-banner">
+          <h2>📷 VISÃO REAL — Webcam → Perceptron</h2>
+          <div class="vision-controls">
+            <button class="icon-btn" id="btn-vision-import" type="button">🧠 IMPORTAR PESOS DO TREINO</button>
+            <button class="icon-btn" id="btn-vision-save" type="button">💾 SALVAR SNAPSHOT</button>
+            <button class="icon-btn primary-btn" id="btn-vision-start" type="button">▶ INICIAR CÂMERA</button>
+          </div>
+        </div>
+        <div id="vision-body">
+          <div class="vision-cam-wrap">
+            <video id="vision-video" autoplay muted playsinline aria-label="Vídeo da webcam"></video>
+            <div class="vision-crosshair" aria-hidden="true">
+              <div class="vc-box"></div>
+              <div class="vc-label">aponte uma cor aqui</div>
+            </div>
+          </div>
+          <aside class="vision-panel">
+            <div class="vision-status-bar">
+              <span id="vision-status">⚪ Aguardando início da câmera</span>
+            </div>
+            <div class="vision-readout">
+              <div id="vision-swatch" class="vision-swatch" aria-label="Cor capturada"></div>
+              <div class="vision-info">
+                <div class="vi-row"><span class="vi-lbl">HEX</span><span class="vi-val" id="vision-hex">—</span></div>
+                <div class="vi-row"><span class="vi-lbl">RGB</span><span class="vi-val" id="vision-rgb">—</span></div>
+                <div class="vi-row"><span class="vi-lbl">HSV</span><span class="vi-val" id="vision-hsv">—</span></div>
+              </div>
+            </div>
+            <div class="vision-decision-box" id="vision-decision">
+              <span class="vd-idle">⏳ Inicie a câmera para classificar</span>
+            </div>
+            <div class="section">
+              <div class="sec-label">PROBABILIDADES POR CLASSE</div>
+              <div id="vision-probs"></div>
+            </div>
+            <div class="vision-hint">
+              💡 <strong>Dica:</strong> primeiro treine o robô no modo <em>Treino</em>, depois clique em <strong>Importar pesos</strong> aqui. A rede neural vai usar o que aprendeu nas cores sintéticas para classificar cores reais!
+            </div>
+          </aside>
+        </div>
+      </section>
+
+    </main>
+  </div>
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>

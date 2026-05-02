@@ -1,11 +1,12 @@
 // =============================================================================
-// SIM — lógica do simulador (visão, movimento, colisão, spawn, reset)
+// SIM v7 — lógica + integração com telemetria e competição
 // =============================================================================
 import { CONFIG, RULES } from './config.js';
-import { state, adaptive, NN } from './state.js';
+import { state, adaptive, NN, recordOutcome, competitor } from './state.js';
 import { burst, addFloat, resizeCanvas, canvas } from './render.js';
 import { playBeep } from './audio.js';
 import { buildInput, forward, learn, argmax, trueClass } from './neural.js';
+import { stepCompetitor, checkCompetitorCollisions } from './competition.js';
 
 const { ROBOT_R, OBJ_R, DETECT_R } = CONFIG;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -37,7 +38,6 @@ export function reset() {
   state.objects = [];
   state.score = 0; state.collected = 0; state.fled_c = 0; state.dmg = 0; state.tick = 0;
   state.lastNear = null; state.lastScores = []; state.scoreHistory = [];
-  // Reset apenas os pesos didáticos (mantém matriz NN treinada — ou reinicia? optamos por reiniciar)
   adaptive.weights = [1, 1, 1, 1];
   adaptive.learnCount = 0;
   state.radarAngle = 0; state.radarPulses = []; state.robotBobble = 0;
@@ -58,7 +58,6 @@ export function vision() {
     const d = dist(state.robot, nearest);
     state.lastScores = forward(buildInput(nearest.rule.hex, d));
     state.robot.target = nearest;
-    // Decisão = a regra real do alvo (a rede aprende a classificá-lo)
     state.robot.state = nearest.rule.flee ? 'flee' : 'chase';
   } else {
     state.lastScores = [];
@@ -68,7 +67,8 @@ export function vision() {
 }
 
 export function moveRobot() {
-  const MV = state.explainMode ? 2.2 : 3.8, AC = state.explainMode ? 0.22 : 0.35, FR = 0.90;
+  const slowMode = state.mode === 'class';
+  const MV = slowMode ? 2.2 : 3.8, AC = slowMode ? 0.22 : 0.35, FR = 0.90;
   const r = state.robot;
   if (r.state === 'idle') { r.vx += rand(-.2, .2); r.vy += rand(-.2, .2); }
   else if (r.state === 'chase' && r.target) {
@@ -84,11 +84,14 @@ export function moveRobot() {
   r.x = Math.max(ROBOT_R, Math.min(state.W - ROBOT_R, r.x + r.vx));
   r.y = Math.max(ROBOT_R, Math.min(state.H - ROBOT_R, r.y + r.vy));
   r.bt++; state.tick++;
-  state.robotBobble += state.explainMode ? .03 : .06;
+  state.robotBobble += state.mode === 'class' ? .03 : .06;
+
+  // Integra competidor
+  stepCompetitor();
 }
 
 export function moveObjects() {
-  const slow = state.explainMode ? .65 : .5;
+  const slow = state.mode === 'class' ? .65 : .5;
   for (const o of state.objects) {
     o.x += o.vx * slow; o.y += o.vy * slow;
     if (o.x < OBJ_R || o.x > state.W - OBJ_R) o.vx *= -1;
@@ -103,23 +106,17 @@ export function collide() {
     const d = dist(state.robot, o), exp = (now - o.born) > o.ttl;
     if (d < ROBOT_R + OBJ_R - 5) {
       state.score += o.rule.pts;
-
-      // ── APRENDIZADO REAL ──
-      // A rede prediz; se a predição estiver correta e a regra é "boa", reforça;
-      // se errou, pune.
       const x = buildInput(o.rule.hex, 0);
       const probs = forward(x);
       const predicted = argmax(probs);
       const truth = trueClass(o.rule.hex);
       const correct = predicted === truth;
-      // Reforço: +1 se acertou e cor é boa OU acertou e cor é má (acertou reconhecer perigo)
-      // Punição: −1 se errou
       const reward = correct ? +1 : -1;
-      learn(truth, reward, x);   // ensina a classe verdadeira
+      learn(truth, reward, x);
+      recordOutcome(truth, correct);
 
       state.glitchEffect = .4;
       state.glitchColor = o.rule.flee ? '255,59,111' : '0,255,163';
-      // Efeito visual sem mexer no transform do canvas (que causa reflow)
       canvas.classList.add('hit');
       setTimeout(() => canvas.classList.remove('hit'), 90);
       playBeep(o.rule.flee ? 160 : 700, 'sine', 100);
@@ -134,7 +131,7 @@ export function collide() {
         state.collected++;
         logCallback?.(`[CAPTURA] ${o.rule.name} +${o.rule.pts} pts · pred:${RULES[predicted].name} ${correct ? '✓' : '✗'}`, '#00ffa3');
       }
-      if (state.explainMode) state.currentStep = 4;
+      if (state.mode === 'class') state.currentStep = 4;
       return false;
     }
     if (exp) {
@@ -144,6 +141,8 @@ export function collide() {
     }
     return true;
   });
+  // Competidor consome objetos também
+  checkCompetitorCollisions();
   while (state.objects.length < CONFIG.N_OBJECTS) state.objects.push(spawnObject());
 }
 

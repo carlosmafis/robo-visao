@@ -1,145 +1,180 @@
 // =============================================================================
-// MAIN — wiring de eventos, loop principal, atalhos de teclado
+// MAIN v7 — orquestra sidebar + 4 modos + loop principal
 // =============================================================================
-import { CONFIG, CLASS_STEPS } from './config.js';
-import { state } from './state.js';
+import { CONFIG, CLASS_STEPS, MODES } from './config.js';
+import { state, saveWeightsToLocalStorage, competitor } from './state.js';
 import { canvas, draw, resizeCanvas, chartResize } from './render.js';
 import { reset, vision, moveRobot, moveObjects, collide, setLogCallback } from './sim.js';
 import { updateUI, addLog, toast } from './ui.js';
 import { startMusic, stopMusic, isMusicPlaying, resumeAudio } from './audio.js';
+import { initSidebar, setActiveMode } from './sidebar.js';
+import { spawnCompetitor, despawnCompetitor } from './competition.js';
+import { startWebcam, stopWebcam, importTrainedWeights, isWebcamRunning } from './webcam.js';
 
 const $ = id => document.getElementById(id);
 
-
 setLogCallback(addLog);
 
-// ── Botões ──
 function togglePause() {
   state.paused = !state.paused;
-  const a = $('btnPlay'), b = $('btnPlay2');
-  a.innerHTML = state.paused ? '<span aria-hidden="true">▶</span> CONTINUAR' : '<span aria-hidden="true">⏸</span> PAUSAR';
-  a.setAttribute('aria-label', state.paused ? 'Continuar' : 'Pausar');
-  b.textContent = state.paused ? 'Continuar' : 'Pausar';
+  const a = $('btnPlay');
+  if (a) a.innerHTML = state.paused ? '<span aria-hidden="true">▶</span> CONTINUAR' : '<span aria-hidden="true">⏸</span> PAUSAR';
 }
 function cycleSpeed() {
-  if (state.explainMode) return;
+  if (state.mode === 'class') return;
   state.speedIdx = (state.speedIdx + 1) % CONFIG.SPEEDS.length;
-  $('btnSpeed').innerHTML = `<span aria-hidden="true">⚡</span> ${CONFIG.SPEED_LABELS[state.speedIdx].toUpperCase()}`;
-  $('btnSpeed2').textContent = CONFIG.SPEED_LABELS[state.speedIdx];
+  const b = $('btnSpeed');
+  if (b) b.innerHTML = `<span aria-hidden="true">⚡</span> ${CONFIG.SPEED_LABELS[state.speedIdx].toUpperCase()}`;
 }
 function doReset() {
   reset();
-  // CORREÇÃO: garante que o pause volte a "Pausar"
   state.paused = false;
-  $('btnPlay').innerHTML = '<span aria-hidden="true">⏸</span> PAUSAR';
-  $('btnPlay2').textContent = 'Pausar';
-  updateUI();
-}
-function toggleTeacher() {
-  state.explainMode = !state.explainMode;
-  const btn = $('btnTeacher');
-  btn.classList.toggle('active-mode', state.explainMode);
-  btn.setAttribute('aria-pressed', String(state.explainMode));
-  const cls = $('classroom');
-  if (state.explainMode) {
-    cls.hidden = false;
-    cls.classList.add('open');
-    $('class-arena-inner').appendChild(canvas);
-    resizeCanvas();
-    state.currentStep = 0;
-    state.synapsePackets = [];
-    $('class-speed-badge').textContent = `🐢 MODO LENTO — ${Math.round(CONFIG.TEACHER_SPEED_FACTOR * 100)}% VELOCIDADE`;
-  } else {
-    cls.classList.remove('open');
-    cls.hidden = true;
-    $('arena-wrap').appendChild(canvas);
-    resizeCanvas();
-  }
+  const a = $('btnPlay');
+  if (a) a.innerHTML = '<span aria-hidden="true">⏸</span> PAUSAR';
+  if (state.mode === 'compete') spawnCompetitor();
   updateUI();
 }
 function toggleMusicBtn() {
   resumeAudio();
   const btn = $('btnMusic');
+  if (!btn) return;
   if (isMusicPlaying()) {
     stopMusic();
     btn.classList.remove('active-mode');
-    btn.setAttribute('aria-pressed', 'false');
     btn.innerHTML = '<span aria-hidden="true">🎵</span> MÚSICA';
   } else {
     startMusic();
     btn.classList.add('active-mode');
-    btn.setAttribute('aria-pressed', 'true');
     btn.innerHTML = '<span aria-hidden="true">🔇</span> MÚSICA';
   }
 }
 function toggleFS() {
   const el = document.documentElement;
-  const isFS = document.fullscreenElement || document.webkitFullscreenElement;
-  const req = el.requestFullscreen || el.webkitRequestFullscreen;
-  const exit = document.exitFullscreen || document.webkitExitFullscreen;
-  if (!req) { toast('Tela cheia não suportada neste dispositivo'); return; }
-  (isFS ? exit.call(document) : req.call(el)).catch(() => toast('Tela cheia bloqueada pelo navegador'));
+  const isFS = document.fullscreenElement;
+  if (isFS) document.exitFullscreen();
+  else el.requestFullscreen?.().catch(() => toast('Tela cheia bloqueada'));
 }
 
-// ── Wiring ──
-['btnPlay', 'btnPlay2'].forEach(id => $(id).addEventListener('click', togglePause));
-['btnSpeed', 'btnSpeed2'].forEach(id => $(id).addEventListener('click', cycleSpeed));
-['btnReset', 'btnReset2'].forEach(id => $(id).addEventListener('click', doReset));
-$('btnTeacher').addEventListener('click', toggleTeacher);
-$('class-close-btn').addEventListener('click', toggleTeacher);
-$('btnMusic').addEventListener('click', toggleMusicBtn);
-$('clearLog').addEventListener('click', () => { $('log').innerHTML = ''; });
-$('btnFS').addEventListener('click', toggleFS);
+// ── Wiring básico ──
+$('btnPlay')?.addEventListener('click', togglePause);
+$('btnSpeed')?.addEventListener('click', cycleSpeed);
+$('btnReset')?.addEventListener('click', doReset);
+$('btnMusic')?.addEventListener('click', toggleMusicBtn);
+$('btnFS')?.addEventListener('click', toggleFS);
+$('clearLog')?.addEventListener('click', () => { const log = $('log'); if (log) log.innerHTML = ''; });
 
-$('nav-next').addEventListener('click', () => {
+// Sala de aula nav
+$('nav-next')?.addEventListener('click', () => {
   state.currentStep = Math.min(state.currentStep + 1, CLASS_STEPS.length - 1);
   updateUI();
 });
-$('nav-prev').addEventListener('click', () => {
+$('nav-prev')?.addEventListener('click', () => {
   state.currentStep = Math.max(state.currentStep - 1, 0);
   updateUI();
 });
 
-document.addEventListener('fullscreenchange', () => setTimeout(() => { resizeCanvas(); chartResize(); }, 60));
-document.addEventListener('webkitfullscreenchange', () => setTimeout(() => { resizeCanvas(); chartResize(); }, 60));
+// ── Wiring competição ──
+$('btn-comp-reset')?.addEventListener('click', () => {
+  spawnCompetitor();
+  toast('🔄 Competição reiniciada — Robô B aprende com η=' + CONFIG.COMPETITOR_LR);
+});
+
+// ── Wiring webcam ──
+$('btn-vision-start')?.addEventListener('click', async () => {
+  if (isWebcamRunning()) {
+    stopWebcam();
+    $('btn-vision-start').textContent = '▶ INICIAR CÂMERA';
+  } else {
+    const ok = await startWebcam();
+    if (ok) $('btn-vision-start').textContent = '⏹ PARAR CÂMERA';
+  }
+});
+$('btn-vision-import')?.addEventListener('click', () => {
+  importTrainedWeights();
+  toast('🧠 Pesos do treino aplicados à webcam');
+});
+$('btn-vision-save')?.addEventListener('click', () => {
+  if (saveWeightsToLocalStorage()) toast('💾 Snapshot dos pesos salvo localmente');
+});
+
+// ── Sidebar wiring ──
+initSidebar((mode) => {
+  // Recolocar canvas no container correto
+  const target =
+    mode === 'class'   ? $('class-arena-inner') :
+    mode === 'compete' ? $('compete-arena-inner') :
+                         $('arena-wrap');
+
+  if (target && canvas.parentElement !== target) target.appendChild(canvas);
+
+  // Habilitar / desabilitar competidor
+  if (mode === 'compete' && !competitor.enabled) spawnCompetitor();
+  if (mode !== 'compete' && competitor.enabled) despawnCompetitor();
+
+  // Webcam
+  if (mode === 'vision') {
+    // não inicia auto — usuário aciona
+  } else if (isWebcamRunning()) {
+    stopWebcam();
+    const b = $('btn-vision-start'); if (b) b.textContent = '▶ INICIAR CÂMERA';
+  }
+
+  setTimeout(() => { resizeCanvas(); chartResize(); updateUI(); }, 60);
+});
+
+// ── Resize global ──
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev =>
+  document.addEventListener(ev, () => setTimeout(() => { resizeCanvas(); chartResize(); }, 60)));
 window.addEventListener('resize', () => setTimeout(() => { resizeCanvas(); chartResize(); }, 80));
 
-// ── Atalhos de teclado ──
+// ── Atalhos ──
 document.addEventListener('keydown', (e) => {
   if (e.target.matches?.('input,textarea')) return;
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
-  else if (e.key === 'ArrowRight' && state.explainMode) {
+  else if (e.key === 'ArrowRight' && state.mode === 'class') {
     state.currentStep = Math.min(state.currentStep + 1, CLASS_STEPS.length - 1); updateUI();
-  } else if (e.key === 'ArrowLeft' && state.explainMode) {
+  } else if (e.key === 'ArrowLeft' && state.mode === 'class') {
     state.currentStep = Math.max(state.currentStep - 1, 0); updateUI();
   } else if (e.key.toLowerCase() === 'r') doReset();
   else if (e.key.toLowerCase() === 's') cycleSpeed();
-  else if (e.key.toLowerCase() === 't') toggleTeacher();
   else if (e.key.toLowerCase() === 'm') toggleMusicBtn();
+  else if (['1', '2', '3', '4'].includes(e.key)) {
+    const idx = parseInt(e.key, 10) - 1;
+    setActiveMode(MODES[idx].id);
+  }
 });
 
-// Auto-avanço dos passos da sala de aula
+// ── Auto-advance steps na sala de aula ──
 let stepAutoTimer = 0;
 function autoAdvanceStep() {
-  if (!state.explainMode) return;
+  if (state.mode !== 'class') return;
   stepAutoTimer++;
   if (stepAutoTimer < 300) return;
   stepAutoTimer = 0;
   if (state.lastNear && state.currentStep < 3) state.currentStep++;
 }
 
+// ── Auto-save dos pesos a cada 30 colisões aprendidas ──
+let lastSavedLearn = 0;
+function autoSaveWeights() {
+  if (state.tick % 600 === 0) {
+    if (saveWeightsToLocalStorage()) lastSavedLearn = Date.now();
+  }
+}
+
 // ── Loop principal ──
 function mainLoop() {
-  if (!state.paused) {
-    const baseSteps = state.explainMode ? 1 : CONFIG.SPEEDS[state.speedIdx];
+  if (!state.paused && state.mode !== 'vision') {
+    const baseSteps = state.mode === 'class' ? 1 : CONFIG.SPEEDS[state.speedIdx];
     for (let i = 0; i < baseSteps; i++) {
       if (state.tick % 4 === 0) vision();
       moveRobot(); moveObjects(); collide();
     }
-    if (state.explainMode) autoAdvanceStep();
+    if (state.mode === 'class') autoAdvanceStep();
     if (state.tick % 3 === 0) updateUI();
+    autoSaveWeights();
   }
-  draw();
+  if (state.mode !== 'vision') draw();
   requestAnimationFrame(mainLoop);
 }
 
@@ -148,10 +183,10 @@ window.addEventListener('load', () => {
   resizeCanvas();
   chartResize();
   doReset();
+  setActiveMode('train');
   updateUI();
-  // Garante que o primeiro gesto destrava o áudio (autoplay policy)
   ['click', 'keydown', 'touchstart'].forEach(ev =>
     document.addEventListener(ev, resumeAudio, { once: true, passive: true }));
   requestAnimationFrame(mainLoop);
-  toast('🎓 Combate Neural v6 — Pressione Espaço para pausar · T para sala de aula');
+  toast(`🚀 Combate Neural ${CONFIG.VERSION} — Use a sidebar para alternar modos · 1-4 atalhos`);
 });
