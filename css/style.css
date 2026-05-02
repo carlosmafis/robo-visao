@@ -49,6 +49,19 @@ body::after{content:'';position:fixed;left:0;right:0;height:60px;pointer-events:
   background:linear-gradient(135deg,rgba(6,11,26,.98),rgba(10,16,40,.95));
   border-bottom:1px solid var(--neon);box-shadow:0 0 28px rgba(0,255,163,.18)}
 #topbar-left{display:flex;align-items:center;gap:10px}
+#brand-logo {
+  height: 26px;
+  width: auto;
+  object-fit: contain;
+  margin-right: 6px;
+  filter: drop-shadow(0 0 6px #00ffa3);
+  transition: 0.2s;
+}
+
+#brand-logo:hover {
+  filter: drop-shadow(0 0 12px #00ffa3);
+  transform: scale(1.05);
+}
 #topbar h1{font-family:'Orbitron',sans-serif;font-size:var(--fz-sm);font-weight:900;color:var(--neon);
   animation:neon-pulse 3s ease-in-out infinite;letter-spacing:.18em;line-height:1}
 #version-badge{font-size:var(--fz-3xs);color:var(--neon2);letter-spacing:.1em;border:1px solid rgba(90,217,255,.4);
