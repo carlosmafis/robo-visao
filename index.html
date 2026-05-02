@@ -1,328 +1,102 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <title>COMBATE NEURAL v5 — Sala de Aula</title>
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-  <style>
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --neon:#00ffa3;--neon2:#00c8ff;--danger:#ff1a5e;--warn:#ffd000;
-    --bg:#060b1a;--bg2:#080e22;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
+  <meta name="theme-color" content="#060b1a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <title>Combate Neural v6 — Sala de Aula de IA Adaptativa</title>
+  <meta name="description" content="Simulador interativo de visão computacional e rede neural adaptativa: um robô aprende a classificar cores em HSV em tempo real. Modo Sala de Aula passo a passo." />
+  <meta name="author" content="Prof. Carlos Adriano" />
+  <link rel="canonical" href="https://carlosmafis.github.io/robo-visao/" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Combate Neural v6 — IA Adaptativa em Sala de Aula" />
+  <meta property="og:description" content="Veja uma rede neural real (perceptron multi-classe + softmax + Hebbian) aprendendo cores ao vivo." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="pt_BR" />
+
+  <!-- Performance / preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" />
+
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+
+  <!-- CSP básico (compatível com fontes Google e blobs SVG) -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    img-src 'self' data: blob:;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src https://fonts.gstatic.com;
+    script-src 'self';
+    connect-src 'self';
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+  " />
+
+  <!-- JSON-LD (SEO educacional) -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"LearningResource",
+    "name":"Combate Neural — Sala de Aula de IA Adaptativa",
+    "description":"Simulação interativa de rede neural perceptron com aprendizado por reforço Hebbian, visão computacional HSV e visualização sináptica.",
+    "educationalLevel":"Ensino Médio / Técnico / Graduação",
+    "learningResourceType":"Simulação interativa",
+    "inLanguage":"pt-BR",
+    "author":{"@type":"Person","name":"Prof. Carlos Adriano"}
   }
-  @keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
-  @keyframes neon-pulse{0%,100%{text-shadow:0 0 8px var(--neon),0 0 20px var(--neon),0 0 40px var(--neon)}50%{text-shadow:0 0 4px var(--neon),0 0 12px var(--neon)}}
-  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-  @keyframes synapse-flow{
-    0%{stroke-dashoffset:120;opacity:.15}
-    50%{opacity:1}
-    100%{stroke-dashoffset:0;opacity:.15}
-  }
-  @keyframes neuron-fire{
-    0%{transform:scale(1);box-shadow:0 0 6px currentColor}
-    30%{transform:scale(1.35);box-shadow:0 0 22px currentColor,0 0 40px currentColor}
-    100%{transform:scale(1);box-shadow:0 0 6px currentColor}
-  }
-  @keyframes classroom-in{
-    0%{opacity:0;transform:translateY(30px)}
-    100%{opacity:1;transform:translateY(0)}
-  }
-  @keyframes step-appear{
-    0%{opacity:0;transform:translateX(-12px)}
-    100%{opacity:1;transform:translateX(0)}
-  }
-  @keyframes typewriter{from{width:0}to{width:100%}}
-  @keyframes pulse-ring{
-    0%{transform:scale(1);opacity:.7}
-    100%{transform:scale(2.2);opacity:0}
-  }
-  @keyframes data-packet{
-    0%{stroke-dashoffset:200}
-    100%{stroke-dashoffset:0}
-  }
-  @keyframes spin-slow{to{transform:rotate(360deg)}}
-  @keyframes float-up{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-44px)}}
+  </script>
 
-  html,body{height:100%;width:100%;overflow:hidden;
-    background:radial-gradient(ellipse at 20% 20%,#0a1535 0%,#060b1a 40%,#08051a 100%);
-    color:var(--neon);font-family:'Share Tech Mono',monospace}
-  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:998;
-    background:repeating-linear-gradient(0deg,rgba(0,255,163,.012) 0px,rgba(0,255,163,.012) 1px,transparent 1px,transparent 3px)}
-  body::after{content:'';position:fixed;left:0;right:0;height:60px;pointer-events:none;z-index:997;
-    background:linear-gradient(to bottom,transparent,rgba(0,255,163,.035),transparent);
-    animation:scanline 7s linear infinite}
-  #root{display:flex;flex-direction:column;height:100%;width:100%;position:relative;z-index:2}
-
-  /* ── TOPBAR ── */
-  #topbar{display:flex;align-items:center;justify-content:space-between;
-    padding:0 16px;height:50px;flex-shrink:0;
-    background:linear-gradient(135deg,rgba(6,11,26,.98),rgba(10,16,40,.95));
-    border-bottom:1px solid var(--neon);
-    box-shadow:0 0 28px rgba(0,255,163,.18)}
-  #topbar-left{display:flex;align-items:center;gap:12px}
-  #topbar h1{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:900;
-    color:var(--neon);animation:neon-pulse 3s ease-in-out infinite;letter-spacing:.18em}
-  #version-badge{font-size:8px;color:var(--neon2);letter-spacing:.1em;
-    border:1px solid rgba(0,200,255,.4);padding:2px 7px;border-radius:2px;
-    background:rgba(0,200,255,.05)}
-  #topbar-right{display:flex;gap:7px;flex-shrink:0;align-items:center}
-  .icon-btn{display:flex;align-items:center;justify-content:center;gap:5px;
-    height:32px;padding:0 12px;background:rgba(0,255,163,.06);
-    border:1px solid rgba(0,255,163,.35);border-radius:3px;
-    cursor:pointer;color:var(--neon);font-family:'Share Tech Mono',monospace;
-    font-size:10px;letter-spacing:.07em;transition:all .15s ease;
-    user-select:none;white-space:nowrap}
-  .icon-btn:hover{background:rgba(0,255,163,.18);border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,163,.4);transform:translateY(-1px)}
-  .icon-btn:active{transform:scale(.97)}
-  .icon-btn.active-mode{background:rgba(0,255,163,.25);border-color:var(--neon);box-shadow:0 0 18px rgba(0,255,163,.55),inset 0 0 8px rgba(0,255,163,.2)}
-
-  /* ── BODY ── */
-  #body{flex:1;display:flex;overflow:hidden;min-height:0;position:relative}
-  #arena-wrap{flex:1;min-width:0;min-height:0;display:flex;position:relative}
-  #arena{display:block;width:100%;height:100%}
-
-  /* ── PAINEL ── */
-  #panel{width:300px;flex-shrink:0;display:flex;flex-direction:column;
-    border-left:1px solid var(--neon);
-    background:linear-gradient(180deg,rgba(6,11,26,.97),rgba(8,14,28,.95));
-    overflow:hidden;box-shadow:-4px 0 30px rgba(0,0,0,.4)}
-  .panel-header{display:flex;align-items:center;justify-content:space-between;
-    padding:9px 14px;background:rgba(0,255,163,.04);
-    border-bottom:1px solid rgba(0,255,163,.2);flex-shrink:0}
-  .panel-title{font-family:'Orbitron',sans-serif;font-size:8px;font-weight:700;
-    color:var(--neon);letter-spacing:.2em;text-transform:uppercase}
-  .panel-badge{font-size:7px;color:var(--neon2);letter-spacing:.05em;
-    padding:2px 6px;border:1px solid rgba(0,200,255,.3);border-radius:2px}
-  .stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;
-    background:rgba(0,255,163,.08);border-bottom:1px solid rgba(0,255,163,.15);flex-shrink:0}
-  .stat-cell{background:var(--bg2);padding:8px 10px;display:flex;flex-direction:column;gap:2px}
-  .stat-lbl{font-size:6px;color:rgba(0,255,163,.4);text-transform:uppercase;letter-spacing:.1em}
-  .stat-val{font-family:'Orbitron',sans-serif;font-size:18px;font-weight:700;color:var(--neon);
-    font-variant-numeric:tabular-nums;text-shadow:0 0 10px rgba(0,255,163,.35);line-height:1}
-  .stat-val.record{color:var(--warn);text-shadow:0 0 10px rgba(255,208,0,.35)}
-  .stat-val.danger-val{color:var(--danger)}
-  .section{padding:9px 14px;border-bottom:1px solid rgba(0,255,163,.1);flex-shrink:0}
-  .sec-label{font-size:7px;color:rgba(0,255,163,.5);font-weight:700;text-transform:uppercase;
-    letter-spacing:.15em;margin-bottom:7px;display:flex;align-items:center;gap:5px}
-  .sec-label::before{content:'';display:block;width:2px;height:9px;
-    background:var(--neon);border-radius:1px;box-shadow:0 0 5px var(--neon)}
-  .none-msg{font-size:9px;color:rgba(0,255,163,.25)}
-  #weights-wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
-  .weight-cell{background:rgba(0,255,163,.04);border:1px solid rgba(0,255,163,.2);
-    border-radius:3px;padding:4px;text-align:center}
-  .weight-lbl{font-size:6px;color:rgba(0,255,163,.35);text-transform:uppercase}
-  .weight-val{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:var(--neon)}
-  #neural-viz-small{background:rgba(0,255,163,.02);border:1px solid rgba(0,255,163,.2);
-    border-radius:3px;padding:7px;min-height:120px;position:relative;overflow:hidden}
-  #neural-svg-small{position:absolute;inset:0;width:100%;height:100%;z-index:1}
-  .neural-layer{display:flex;flex-direction:column;gap:3px;margin-bottom:5px;position:relative;z-index:2}
-  .layer-label{font-size:6px;color:rgba(0,255,163,.3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px}
-  .neuron-row{display:flex;gap:4px;align-items:center;margin-bottom:1px}
-  .neuron{width:18px;height:18px;border-radius:50%;background:rgba(0,255,163,.06);
-    border:1.5px solid rgba(0,255,163,.25);display:flex;align-items:center;justify-content:center;
-    font-size:6px;font-weight:700;color:rgba(0,255,163,.4);transition:all .1s;flex-shrink:0;position:relative;z-index:3}
-  .neuron.active{background:rgba(0,255,163,.25);border-color:var(--neon);
-    box-shadow:0 0 12px rgba(0,255,163,.65);color:var(--neon);animation:neuron-fire .5s ease-out}
-  .neuron-label{font-size:7px;color:rgba(0,255,163,.35);min-width:24px;flex-shrink:0}
-  .neuron-value{font-size:8px;color:var(--neon);min-width:30px;text-align:right;
-    font-variant-numeric:tabular-nums;font-family:'Orbitron',sans-serif;font-weight:700}
-  #chart-wrap{padding:0 14px 8px;border-bottom:1px solid rgba(0,255,163,.1);flex-shrink:0}
-  #chart-label{font-size:6px;color:rgba(0,255,163,.35);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
-  #chart{width:100%;height:50px;display:block}
-  .hsv-row{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
-  .hsv-cell{background:rgba(0,255,163,.04);border:1px solid rgba(0,255,163,.2);border-radius:2px;padding:4px;text-align:center}
-  .hsv-lbl{font-size:6px;color:rgba(0,255,163,.35);text-transform:uppercase}
-  .hsv-val{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:var(--neon)}
-  .decision-box{border-radius:3px;padding:8px 10px;background:rgba(0,255,163,.05);
-    border:1px solid rgba(0,255,163,.25);margin-bottom:7px;transition:all .2s}
-  .dec-name{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;color:var(--neon)}
-  .dec-sub{font-size:8px;color:rgba(0,255,163,.45);margin-top:2px}
-  .conf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-  .conf-label{font-size:7px;color:rgba(0,255,163,.35);letter-spacing:.1em}
-  .conf-pct{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;color:var(--neon)}
-  .bar-bg{background:rgba(0,255,163,.08);border-radius:1px;height:3px;overflow:hidden}
-  .bar-fill{height:100%;border-radius:1px;transition:width .15s}
-  .bar-group{margin-bottom:4px}
-  .bar-header{display:flex;justify-content:space-between;margin-bottom:2px}
-  .bar-name{font-size:7px;color:rgba(0,255,163,.5);display:flex;align-items:center;gap:4px}
-  .bar-dot{width:5px;height:5px;border-radius:50%;display:inline-block;flex-shrink:0}
-  .bar-pct{font-family:'Orbitron',sans-serif;font-size:8px;font-weight:700;color:var(--neon)}
-  .log-header{display:flex;justify-content:space-between;align-items:center;
-    padding:7px 14px;border-bottom:1px solid rgba(0,255,163,.1);flex-shrink:0;background:rgba(0,255,163,.03)}
-  .log-clear{font-size:8px;color:rgba(0,255,163,.3);cursor:pointer;transition:color .2s}
-  .log-clear:hover{color:var(--neon)}
-  .log-wrap{flex:1;overflow-y:auto;padding:3px 14px;min-height:0;font-size:8px}
-  .log-wrap::-webkit-scrollbar{width:3px}
-  .log-wrap::-webkit-scrollbar-thumb{background:rgba(0,255,163,.3);border-radius:2px}
-  .log-entry{display:flex;gap:5px;padding:2px 0;border-bottom:1px solid rgba(0,255,163,.05);line-height:1.3}
-  .log-time{color:rgba(0,255,163,.3);font-variant-numeric:tabular-nums;min-width:30px;flex-shrink:0}
-  .log-msg{color:var(--neon)}
-  .panel-controls{display:flex;gap:4px;padding:8px 14px;
-    border-top:1px solid rgba(0,255,163,.15);background:rgba(0,255,163,.02);flex-shrink:0}
-  .ctrl-btn{flex:1;padding:6px 0;font-size:8px;font-family:'Share Tech Mono',monospace;
-    font-weight:700;color:var(--neon);background:rgba(0,255,163,.06);
-    border:1px solid rgba(0,255,163,.3);border-radius:3px;cursor:pointer;
-    transition:all .15s;text-transform:uppercase;letter-spacing:.07em}
-  .ctrl-btn:hover{background:rgba(0,255,163,.18);border-color:var(--neon);box-shadow:0 0 10px rgba(0,255,163,.3)}
-  #footer{text-align:center;font-size:7px;padding:4px;color:rgba(0,255,163,.2);
-    background:rgba(6,11,26,.98);border-top:1px solid rgba(0,255,163,.1);flex-shrink:0;letter-spacing:.12em}
-
-  /* ════════════════════════════════════════════════════════
-     🎓 SALA DE AULA — OVERLAY COMPLETO
-  ════════════════════════════════════════════════════════ */
-  #classroom{
-    display:none;position:absolute;inset:0;z-index:500;
-    background:rgba(2,5,18,.96);
-    backdrop-filter:blur(2px);
-    flex-direction:column;overflow:hidden;
-  }
-  #classroom.open{display:flex;animation:classroom-in .4s ease-out}
-
-  /* Banner topo da sala */
-  #class-banner{
-    flex-shrink:0;padding:10px 20px;
-    background:linear-gradient(135deg,rgba(0,255,163,.12),rgba(0,200,255,.06));
-    border-bottom:2px solid var(--neon);
-    display:flex;align-items:center;justify-content:space-between;
-    box-shadow:0 0 30px rgba(0,255,163,.25)
-  }
-  #class-banner h2{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;
-    color:var(--neon);letter-spacing:.22em;text-shadow:0 0 20px var(--neon)}
-  #class-speed-badge{font-size:9px;color:var(--warn);letter-spacing:.1em;
-    border:1px solid var(--warn);padding:3px 10px;border-radius:2px;
-    background:rgba(255,208,0,.08);animation:blink 1.5s ease-in-out infinite}
-  #class-close-btn{cursor:pointer;color:var(--danger);font-size:11px;letter-spacing:.08em;
-    border:1px solid var(--danger);padding:4px 12px;border-radius:3px;
-    background:rgba(255,26,94,.08);transition:all .15s}
-  #class-close-btn:hover{background:rgba(255,26,94,.2)}
-
-  /* Layout interno */
-  #class-body{flex:1;display:grid;grid-template-columns:1fr 380px;gap:0;overflow:hidden;min-height:0}
-
-  /* ── Arena reduzida à esquerda ── */
-  #class-arena-col{position:relative;overflow:hidden;display:flex;flex-direction:column}
-  #class-arena-header{flex-shrink:0;padding:6px 14px;
-    background:rgba(0,255,163,.04);border-bottom:1px solid rgba(0,255,163,.12);
-    font-size:9px;color:rgba(0,255,163,.5);letter-spacing:.12em;
-    display:flex;align-items:center;justify-content:space-between}
-  #class-arena-inner{flex:1;position:relative;overflow:hidden}
-  /* O canvas principal reusa o mesmo #arena */
-
-  /* ── Painel direito da sala ── */
-  #class-right{border-left:1px solid rgba(0,255,163,.2);overflow-y:auto;display:flex;flex-direction:column;background:rgba(6,11,26,.95)}
-  #class-right::-webkit-scrollbar{width:3px}
-  #class-right::-webkit-scrollbar-thumb{background:rgba(0,255,163,.3)}
-
-  /* Passo atual — destaque máximo */
-  #class-step-box{
-    flex-shrink:0;padding:14px 18px;
-    background:linear-gradient(135deg,rgba(0,255,163,.08),rgba(0,200,255,.04));
-    border-bottom:1px solid rgba(0,255,163,.2);
-  }
-  #class-step-num{font-size:8px;color:rgba(0,255,163,.45);letter-spacing:.18em;margin-bottom:5px;font-family:'Orbitron',sans-serif}
-  #class-step-title{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;
-    color:var(--neon);margin-bottom:6px;line-height:1.3}
-  #class-step-desc{font-size:11px;color:rgba(0,255,163,.8);line-height:1.8;white-space:pre-line}
-  #class-step-formula{
-    margin-top:8px;padding:8px 12px;
-    background:rgba(0,0,0,.4);border-left:3px solid var(--neon2);border-radius:2px;
-    font-size:10px;color:var(--neon2);font-family:'Orbitron',sans-serif;letter-spacing:.05em;line-height:1.7
-  }
-
-  /* Rede neural grande — a estrela da sala */
-  #class-neural-wrap{flex-shrink:0;padding:14px 18px;border-bottom:1px solid rgba(0,255,163,.15)}
-  #class-neural-title{font-family:'Orbitron',sans-serif;font-size:9px;color:var(--neon);
-    letter-spacing:.2em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-  #class-neural-title::after{content:'';flex:1;height:1px;background:rgba(0,255,163,.2)}
-  #class-neural-svg-wrap{position:relative;width:100%;height:220px}
-  #class-neural-svg{width:100%;height:100%}
-
-  /* HSV ao vivo */
-  #class-hsv-wrap{flex-shrink:0;padding:12px 18px;border-bottom:1px solid rgba(0,255,163,.15)}
-  .class-hsv-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
-  .class-hsv-cell{border-radius:4px;padding:8px;text-align:center;
-    background:rgba(0,0,0,.3);border:1px solid rgba(0,255,163,.2);transition:all .3s}
-  .class-hsv-cell.lit{border-color:var(--neon);background:rgba(0,255,163,.1);box-shadow:0 0 12px rgba(0,255,163,.3)}
-  .class-hsv-lbl{font-size:8px;color:rgba(0,255,163,.45);text-transform:uppercase;letter-spacing:.1em}
-  .class-hsv-val{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;color:var(--neon);line-height:1.2}
-  .class-hsv-meaning{font-size:8px;color:rgba(0,255,163,.4);margin-top:2px;min-height:11px}
-
-  /* Ativações grandes */
-  #class-activations{flex-shrink:0;padding:12px 18px;border-bottom:1px solid rgba(0,255,163,.15)}
-  .class-act-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  .class-act-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 8px currentColor}
-  .class-act-name{font-size:9px;color:rgba(0,255,163,.5);min-width:60px;letter-spacing:.05em}
-  .class-act-bar-bg{flex:1;height:8px;background:rgba(0,255,163,.06);border-radius:2px;overflow:hidden;border:1px solid rgba(0,255,163,.12)}
-  .class-act-bar{height:100%;border-radius:2px;transition:width .25s ease;box-shadow:0 0 8px currentColor}
-  .class-act-pct{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;min-width:34px;text-align:right}
-
-  /* Decisão em destaque */
-  #class-decision{flex-shrink:0;padding:12px 18px}
-  #class-dec-box{border-radius:4px;padding:12px 14px;margin-bottom:6px;border:1px solid rgba(0,255,163,.3);transition:all .3s}
-  #class-dec-name{font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:var(--neon)}
-  #class-dec-rationale{font-size:10px;color:rgba(0,255,163,.6);margin-top:5px;line-height:1.7}
-
-  /* Rodapé sala */
-  #class-footer{flex-shrink:0;padding:8px 18px;
-    background:rgba(0,255,163,.04);border-top:1px solid rgba(0,255,163,.12);
-    display:flex;align-items:center;justify-content:space-between;font-size:8px;color:rgba(0,255,163,.4)}
-  #class-step-nav{display:flex;gap:6px}
-  .nav-btn{cursor:pointer;padding:3px 10px;border:1px solid rgba(0,255,163,.3);border-radius:2px;
-    color:var(--neon);font-family:'Share Tech Mono',monospace;font-size:8px;
-    background:rgba(0,255,163,.06);transition:all .15s}
-  .nav-btn:hover{background:rgba(0,255,163,.18);border-color:var(--neon)}
-
-  @media(max-width:640px){
-    #body{flex-direction:column}
-    #arena-wrap{height:45vw;min-height:160px;flex:0 0 auto}
-    #panel{width:100%;flex:1;border-left:none;border-top:1px solid var(--neon);overflow-y:auto}
-    .log-wrap{max-height:70px;flex:none}
-    #class-body{grid-template-columns:1fr}
-    #class-right{border-left:none;border-top:1px solid rgba(0,255,163,.2)}
-    #class-neural-svg-wrap{height:160px}
-  }
-  </style>
+  <link rel="stylesheet" href="./css/style.css" />
 </head>
+
 <body>
+<a href="#arena-wrap" class="skip-link">Pular para a arena</a>
+
 <div id="root">
 
-  <div id="topbar">
+  <header id="topbar" role="banner">
     <div id="topbar-left">
-      <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-        <rect x="2" y="2" width="28" height="28" rx="3" stroke="#00ffa3" stroke-width="1.5" opacity=".4"/>
-        <rect x="8" y="8" width="16" height="16" rx="2" stroke="#00ffa3" stroke-width="1" fill="rgba(0,255,163,.1)"/>
-        <circle cx="16" cy="16" r="4" fill="#00ffa3" opacity=".8"/>
-        <line x1="2" y1="16" x2="8" y2="16" stroke="#00ffa3" stroke-width="1.5"/>
-        <line x1="24" y1="16" x2="30" y2="16" stroke="#00ffa3" stroke-width="1.5"/>
-        <line x1="16" y1="2" x2="16" y2="8" stroke="#00ffa3" stroke-width="1.5"/>
-        <line x1="16" y1="24" x2="16" y2="30" stroke="#00ffa3" stroke-width="1.5"/>
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false">
+        <rect x="2" y="2" width="28" height="28" rx="3" stroke="currentColor" stroke-width="1.5" opacity=".4"/>
+        <rect x="8" y="8" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1" fill="currentColor" fill-opacity=".1"/>
+        <circle cx="16" cy="16" r="4" fill="currentColor" opacity=".8"/>
+        <line x1="2" y1="16" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="24" y1="16" x2="30" y2="16" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="16" y1="2" x2="16" y2="8" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="16" y1="24" x2="16" y2="30" stroke="currentColor" stroke-width="1.5"/>
       </svg>
       <h1>COMBATE NEURAL</h1>
-      <div id="version-badge">v5.0</div>
+      <span id="version-badge" aria-label="Versão 6.0">v6.0</span>
     </div>
-    <div id="topbar-right">
-      <div class="icon-btn" id="btnPlay"><span>⏸</span> PAUSAR</div>
-      <div class="icon-btn" id="btnSpeed"><span>⚡</span> NORMAL</div>
-      <div class="icon-btn" id="btnTeacher"><span>🎓</span> SALA DE AULA</div>
-      <div class="icon-btn" id="btnMusic"><span>🎵</span> MÚSICA</div>
-      <div class="icon-btn" id="btnReset"><span>↺</span> RESET</div>
-      <div class="icon-btn" id="btnFS"><span>⛶</span></div>
-    </div>
-  </div>
+    <nav id="topbar-right" aria-label="Controles principais">
+      <button class="icon-btn" id="btnPlay" type="button" aria-label="Pausar simulação" aria-keyshortcuts="Space"><span aria-hidden="true">⏸</span> PAUSAR</button>
+      <button class="icon-btn" id="btnSpeed" type="button" aria-label="Alterar velocidade"><span aria-hidden="true">⚡</span> NORMAL</button>
+      <button class="icon-btn" id="btnTeacher" type="button" aria-label="Abrir sala de aula" aria-pressed="false"><span aria-hidden="true">🎓</span> SALA DE AULA</button>
+      <button class="icon-btn" id="btnMusic" type="button" aria-label="Tocar música" aria-pressed="false"><span aria-hidden="true">🎵</span> MÚSICA</button>
+      <button class="icon-btn" id="btnReset" type="button" aria-label="Reiniciar partida"><span aria-hidden="true">↺</span> RESET</button>
+      <button class="icon-btn" id="btnFS" type="button" aria-label="Tela cheia"><span aria-hidden="true">⛶</span></button>
+    </nav>
+  </header>
 
-  <div id="body">
-    <div id="arena-wrap">
-      <canvas id="arena"></canvas>
-    </div>
+  <main id="body">
+    <section id="arena-wrap" aria-label="Arena de simulação">
+      <canvas id="arena" aria-label="Simulação ao vivo do robô"></canvas>
+    </section>
 
-    <!-- PAINEL LATERAL NORMAL -->
-    <div id="panel">
+    <!-- ───── PAINEL LATERAL NORMAL ───── -->
+    <aside id="panel" aria-label="Processador neural">
       <div class="panel-header">
         <div class="panel-title">PROCESSADOR NEURAL</div>
-        <div class="panel-badge">AO VIVO</div>
+        <div class="panel-badge"><span class="live-dot" aria-hidden="true"></span>AO VIVO</div>
       </div>
+
       <div class="stats-grid">
         <div class="stat-cell"><div class="stat-lbl">Pontuação</div><div class="stat-val" id="pts">0</div></div>
         <div class="stat-cell"><div class="stat-lbl">Capturados</div><div class="stat-val" id="col">0</div></div>
@@ -331,6 +105,7 @@
         <div class="stat-cell"><div class="stat-lbl">Dano</div><div class="stat-val danger-val" id="dmg">0</div></div>
         <div class="stat-cell"><div class="stat-lbl">Aprend.</div><div class="stat-val" id="learn-count" style="font-size:14px">0</div></div>
       </div>
+
       <div class="section">
         <div class="sec-label">PESOS ADAPTATIVOS</div>
         <div id="weights-wrap">
@@ -340,10 +115,21 @@
           <div class="weight-cell"><div class="weight-lbl">D/Dist</div><div class="weight-val" id="w3">1.00</div></div>
         </div>
       </div>
+
+      <div class="section">
+        <div class="sec-label">MATRIZ DE PESOS (6×4)</div>
+        <div id="weight-heatmap" role="img" aria-label="Heatmap dos pesos sinápticos por classe"></div>
+        <div class="heatmap-legend">
+          <span>−</span>
+          <span class="heatmap-bar" aria-hidden="true"></span>
+          <span>+</span>
+        </div>
+      </div>
+
       <div class="section">
         <div class="sec-label">REDE SINÁPTICA</div>
         <div id="neural-viz-small">
-          <svg id="neural-svg-small"></svg>
+          <svg id="neural-svg-small" aria-hidden="true"></svg>
           <div class="neural-layer">
             <div class="layer-label">↳ Entradas</div>
             <div class="neuron-row"><span class="neuron-label">H°</span><div class="neuron" id="n-h">H</div><span class="neuron-value" id="nv-h">—</span></div>
@@ -352,19 +138,21 @@
             <div class="neuron-row"><span class="neuron-label">Dist</span><div class="neuron" id="n-d">D</div><span class="neuron-value" id="nv-d">—</span></div>
           </div>
           <div class="neural-layer">
-            <div class="layer-label">↳ Saídas</div>
-            <div id="neural-output-small"><div class="none-msg" style="font-size:8px">AGUARDANDO...</div></div>
+            <div class="layer-label">↳ Saídas (softmax)</div>
+            <div id="neural-output-small"><div class="none-msg">AGUARDANDO...</div></div>
           </div>
         </div>
       </div>
+
       <div id="chart-wrap">
         <div id="chart-label">EVOLUÇÃO DA PONTUAÇÃO</div>
-        <canvas id="chart"></canvas>
+        <canvas id="chart" aria-label="Gráfico da pontuação ao longo do tempo"></canvas>
       </div>
+
       <div class="section">
         <div class="sec-label">ANÁLISE HSV</div>
         <div id="near-none" class="none-msg">Nenhum alvo no alcance</div>
-        <div id="near-info" style="display:none">
+        <div id="near-info" hidden>
           <div class="hsv-row">
             <div class="hsv-cell"><div class="hsv-lbl">H°</div><div class="hsv-val" id="hval">0</div></div>
             <div class="hsv-cell"><div class="hsv-lbl">S%</div><div class="hsv-val" id="sval">0</div></div>
@@ -373,71 +161,68 @@
           </div>
         </div>
       </div>
+
       <div class="section">
-        <div class="sec-label">ATIVAÇÕES</div>
+        <div class="sec-label">ATIVAÇÕES (softmax)</div>
         <div id="scores-panel"></div>
       </div>
+
       <div class="section">
         <div class="sec-label">DECISÃO</div>
         <div class="decision-box" id="dec-box">
           <div class="dec-name" id="dec-name">ESCANEANDO...</div>
           <div class="dec-sub" id="dec-sub">Aguardando detecção</div>
+          <div class="dec-margin" id="dec-margin"></div>
         </div>
         <div class="conf-row"><span class="conf-label">CONFIANÇA</span><span class="conf-pct" id="conf-pct">—</span></div>
         <div class="bar-bg"><div class="bar-fill" id="conf-bar" style="width:0%;background:var(--neon)"></div></div>
       </div>
+
       <div class="log-header">
         <span class="sec-label" style="margin:0">EVENTOS</span>
-        <span class="log-clear" id="clearLog">LIMPAR</span>
+        <button class="log-clear" id="clearLog" type="button">LIMPAR</button>
       </div>
-      <div class="log-wrap" id="log"></div>
+      <div class="log-wrap" id="log" role="log" aria-live="polite" aria-atomic="false"></div>
+
       <div class="panel-controls">
-        <button class="ctrl-btn" id="btnPlay2">Pausar</button>
-        <button class="ctrl-btn" id="btnSpeed2">Normal</button>
-        <button class="ctrl-btn" id="btnReset2">Reset</button>
+        <button class="ctrl-btn" id="btnPlay2" type="button">Pausar</button>
+        <button class="ctrl-btn" id="btnSpeed2" type="button">Normal</button>
+        <button class="ctrl-btn" id="btnReset2" type="button">Reset</button>
       </div>
-    </div>
+    </aside>
 
     <!-- ════════ 🎓 SALA DE AULA ════════ -->
-    <div id="classroom">
+    <section id="classroom" aria-label="Sala de Aula" hidden>
       <div id="class-banner">
         <h2>🎓 SALA DE AULA — IA NEURAL</h2>
         <div id="class-speed-badge">🐢 MODO LENTO ATIVO</div>
-        <div id="class-close-btn" onclick="toggleTeacher()">✕ SAIR DA SALA</div>
+        <button id="class-close-btn" type="button">✕ SAIR DA SALA</button>
       </div>
 
       <div id="class-body">
-        <!-- Arena normal ocupa a esquerda pela sobreposição do canvas -->
         <div id="class-arena-col">
           <div id="class-arena-header">
             <span>🤖 ARENA — VELOCIDADE REDUZIDA</span>
             <span id="class-tick-display">T: 00:00</span>
           </div>
-          <div id="class-arena-inner">
-            <!-- O canvas #arena fica aqui -->
-          </div>
+          <div id="class-arena-inner"></div>
         </div>
 
-        <!-- Painel didático direito -->
         <div id="class-right">
-
-          <!-- PASSO ATUAL -->
           <div id="class-step-box">
             <div id="class-step-num">PASSO 1 DE 5</div>
             <div id="class-step-title">Aguardando alvo...</div>
-            <div id="class-step-desc">O robô está explorando o ambiente.\nQuando um objeto entrar no raio de detecção\n(círculo tracejado), a análise começa.</div>
+            <div id="class-step-desc">O robô está explorando o ambiente. Quando um objeto entrar no raio de detecção (círculo tracejado), a análise começa.</div>
             <div id="class-step-formula"></div>
           </div>
 
-          <!-- REDE NEURAL GRANDE -->
           <div id="class-neural-wrap">
             <div id="class-neural-title">REDE NEURAL SINÁPTICA</div>
             <div id="class-neural-svg-wrap">
-              <svg id="class-neural-svg" viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg"></svg>
+              <svg id="class-neural-svg" viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" aria-label="Visualização da rede neural"></svg>
             </div>
           </div>
 
-          <!-- HSV DETALHADO -->
           <div id="class-hsv-wrap">
             <div class="sec-label" style="margin-bottom:8px">ANÁLISE HSV DO ALVO</div>
             <div class="class-hsv-row">
@@ -448,13 +233,11 @@
             </div>
           </div>
 
-          <!-- ATIVAÇÕES -->
           <div id="class-activations">
             <div class="sec-label" style="margin-bottom:8px">NEURÔNIOS DE SAÍDA — ATIVAÇÃO</div>
             <div id="class-act-list"></div>
           </div>
 
-          <!-- DECISÃO -->
           <div id="class-decision">
             <div class="sec-label" style="margin-bottom:8px">DECISÃO FINAL</div>
             <div id="class-dec-box">
@@ -464,1011 +247,22 @@
           </div>
 
           <div id="class-footer">
-            <span id="class-footer-tip">💡 Velocidade automática: 0.4× do normal</span>
+            <span id="class-footer-tip">💡 Use ← → para navegar entre os passos · Espaço pausa</span>
             <div id="class-step-nav">
-              <div class="nav-btn" id="nav-prev">◀ ANTERIOR</div>
-              <div class="nav-btn" id="nav-next">PRÓXIMO ▶</div>
+              <button class="nav-btn" id="nav-prev" type="button">◀ ANTERIOR</button>
+              <button class="nav-btn" id="nav-next" type="button">PRÓXIMO ▶</button>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
-        </div><!-- /class-right -->
-      </div><!-- /class-body -->
-    </div><!-- /classroom -->
-
-  </div><!-- /body -->
-
-  <footer id="footer">PROF. CARLOS ADRIANO &nbsp;·&nbsp; SISTEMA DE COMBATE NEURAL v5.0 &nbsp;·&nbsp; IA ADAPTATIVA + SALA DE AULA</footer>
+  <footer id="footer">PROF. CARLOS ADRIANO &nbsp;·&nbsp; SISTEMA DE COMBATE NEURAL v6.0 &nbsp;·&nbsp; PERCEPTRON + HEBBIAN + SOFTMAX</footer>
 </div>
 
-<script>
-// ═══════════════════════════════════════════════════════════════════════════
-//  CANVAS
-// ═══════════════════════════════════════════════════════════════════════════
-const canvas = document.getElementById('arena');
-const ctx    = canvas.getContext('2d');
-let W, H;
+<div id="toast" role="status" aria-live="polite"></div>
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  ROBÔ SVG
-// ═══════════════════════════════════════════════════════════════════════════
-function buildRobotImage(state) {
-  const bodyCol = state==='chase'?'#00ffa3':state==='flee'?'#ff1a5e':'#00c8ff';
-  const eyeCol  = state==='flee'?'#ffd000':'#00ffa3';
-  const antCol  = state==='flee'?'#ffd000':'#00ffa3';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -26 40 52" width="80" height="104">
-  <defs>
-    <filter id="g"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    <radialGradient id="bg" cx="35%" cy="30%"><stop offset="0%" stop-color="${bodyCol}" stop-opacity=".5"/><stop offset="100%" stop-color="${bodyCol}" stop-opacity=".1"/></radialGradient>
-    <radialGradient id="hg" cx="35%" cy="25%"><stop offset="0%" stop-color="${bodyCol}" stop-opacity=".6"/><stop offset="100%" stop-color="${bodyCol}" stop-opacity=".12"/></radialGradient>
-  </defs>
-  <line x1="-5" y1="-18" x2="-8" y2="-25" stroke="${antCol}" stroke-width="1.2" opacity=".8"/>
-  <circle cx="-8" cy="-25.5" r="1.5" fill="${antCol}" opacity=".9" filter="url(#g)"/>
-  <line x1="5" y1="-18" x2="8" y2="-25" stroke="${antCol}" stroke-width="1.2" opacity=".8"/>
-  <circle cx="8" cy="-25.5" r="1.5" fill="${antCol}" opacity=".9" filter="url(#g)"/>
-  <rect x="-9" y="-22" width="18" height="13" rx="3" fill="url(#hg)" stroke="${bodyCol}" stroke-width="1.5" filter="url(#g)"/>
-  <rect x="-7" y="-19" width="14" height="5" rx="1.5" fill="rgba(0,0,0,.7)" stroke="${eyeCol}" stroke-width=".8"/>
-  <circle cx="-3.5" cy="-16.5" r="2.2" fill="${eyeCol}" opacity=".95" filter="url(#g)"/>
-  <circle cx="3.5" cy="-16.5" r="2.2" fill="${eyeCol}" opacity=".95" filter="url(#g)"/>
-  <circle cx="-2.8" cy="-17.1" r=".7" fill="white" opacity=".7"/>
-  <circle cx="4.2" cy="-17.1" r=".7" fill="white" opacity=".7"/>
-  <rect x="-6" y="-12" width="12" height="2" rx=".8" fill="rgba(0,0,0,.5)" stroke="${bodyCol}" stroke-width=".6" opacity=".6"/>
-  <line x1="-4" y1="-12" x2="-4" y2="-10" stroke="${bodyCol}" stroke-width=".5" opacity=".5"/>
-  <line x1="-1" y1="-12" x2="-1" y2="-10" stroke="${bodyCol}" stroke-width=".5" opacity=".5"/>
-  <line x1="2" y1="-12" x2="2" y2="-10" stroke="${bodyCol}" stroke-width=".5" opacity=".5"/>
-  <rect x="-12" y="-20" width="3.5" height="6" rx="1" fill="${bodyCol}" opacity=".5"/>
-  <rect x="8.5" y="-20" width="3.5" height="6" rx="1" fill="${bodyCol}" opacity=".5"/>
-  <rect x="-4" y="-9" width="8" height="4" rx="1" fill="${bodyCol}" opacity=".35"/>
-  <rect x="-13" y="-5" width="26" height="20" rx="3" fill="url(#bg)" stroke="${bodyCol}" stroke-width="1.8" filter="url(#g)"/>
-  <circle cx="0" cy="3" r="5.5" fill="rgba(0,0,0,.6)" stroke="${bodyCol}" stroke-width="1.2"/>
-  <circle cx="0" cy="3" r="3.5" fill="${bodyCol}" opacity=".7" filter="url(#g)"/>
-  <circle cx="0" cy="3" r="1.8" fill="white" opacity=".5"/>
-  <line x1="-10" y1="-1" x2="-6" y2="-1" stroke="${bodyCol}" stroke-width=".8" opacity=".4"/>
-  <line x1="6" y1="-1" x2="10" y2="-1" stroke="${bodyCol}" stroke-width=".8" opacity=".4"/>
-  <rect x="-12" y="2" width="3" height="8" rx="1" fill="${bodyCol}" opacity=".2" stroke="${bodyCol}" stroke-width=".5"/>
-  <rect x="9" y="2" width="3" height="8" rx="1" fill="${bodyCol}" opacity=".2" stroke="${bodyCol}" stroke-width=".5"/>
-  <rect x="-8" y="11" width="16" height="2.5" rx="1" fill="rgba(0,0,0,.5)" stroke="${bodyCol}" stroke-width=".5"/>
-  <rect x="-8" y="11" width="${state==='idle'?10:state==='chase'?14:5}" height="2.5" rx="1" fill="${bodyCol}" opacity=".7"/>
-  <rect x="-18" y="-4" width="6" height="14" rx="2.5" fill="url(#bg)" stroke="${bodyCol}" stroke-width="1.3"/>
-  <rect x="-18.5" y="10" width="6.5" height="6" rx="2" fill="rgba(0,0,0,.6)" stroke="${bodyCol}" stroke-width="1"/>
-  <circle cx="-15.5" cy="13" r="1.5" fill="${bodyCol}" opacity=".8"/>
-  <rect x="12" y="-4" width="6" height="14" rx="2.5" fill="url(#bg)" stroke="${bodyCol}" stroke-width="1.3"/>
-  <rect x="12" y="10" width="6.5" height="6" rx="2" fill="rgba(0,0,0,.6)" stroke="${bodyCol}" stroke-width="1"/>
-  <circle cx="15.5" cy="13" r="1.5" fill="${bodyCol}" opacity=".8"/>
-  <rect x="-10" y="15" width="20" height="4" rx="1.5" fill="${bodyCol}" opacity=".25" stroke="${bodyCol}" stroke-width=".8"/>
-  <rect x="-10" y="19" width="8" height="12" rx="2" fill="url(#bg)" stroke="${bodyCol}" stroke-width="1.3"/>
-  <rect x="-11" y="30" width="10" height="4.5" rx="2" fill="rgba(0,0,0,.6)" stroke="${bodyCol}" stroke-width="1"/>
-  <rect x="2" y="19" width="8" height="12" rx="2" fill="url(#bg)" stroke="${bodyCol}" stroke-width="1.3"/>
-  <rect x="1" y="30" width="10" height="4.5" rx="2" fill="rgba(0,0,0,.6)" stroke="${bodyCol}" stroke-width="1"/>
-</svg>`;
-  const img = new Image();
-  img.src = URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
-  return img;
-}
-const robotImgs = { idle:buildRobotImage('idle'), chase:buildRobotImage('chase'), flee:buildRobotImage('flee') };
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  ESTADO GLOBAL
-// ═══════════════════════════════════════════════════════════════════════════
-let adaptiveWeights=[1,1,1,1], learnCount=0, explainMode=false, scoreHistory=[];
-let robot, objects, score, collected, fled_c, dmg, tick, lastNear, lastScores;
-let glitchEffect=0, glitchColor='255,26,94';
-let radarAngle=0, radarPulses=[];
-let robotBobble=0, particles=[], floatLabels=[];
-const ROBOT_R=18, OBJ_R=12, DETECT_R=110;
-const SPEEDS=[1,2,4], SPEED_LABELS=['Normal','Rápido','Turbo'];
-let speedIdx=0, paused=false;
-
-// Sala de aula: velocidade independente
-const TEACHER_SPEED_FACTOR = 0.35; // 35% da velocidade normal
-let teacherPhase = 0; // fase da animação sináptica
-
-// Passos didáticos
-const CLASS_STEPS = [
-  {
-    num:'PASSO 1 / 5', title:'🔍 Percepção — O Robô Detecta',
-    desc:'O sensor radar varre 360° continuamente.\nQuando um objeto entra no raio de detecção\n(≤ 110px), o sistema captura sua cor.',
-    formula:'Raio de detecção = 110 px\nMétodo = Distância Euclidiana\nd = √( (Δx)² + (Δy)² )'
-  },
-  {
-    num:'PASSO 2 / 5', title:'🎨 Conversão RGB → HSV',
-    desc:'A cor capturada (RGB) é convertida para\no espaço HSV — mais próximo da percepção\nhumana e ideal para classificação neural.',
-    formula:'H = Matiz (0–360°) → IDENTIFICA a cor\nS = Saturação (0–100%) → intensidade\nV = Brilho (0–100%) → luminosidade'
-  },
-  {
-    num:'PASSO 3 / 5', title:'⚡ Sinapses — Propagação Neural',
-    desc:'Os 4 valores (H, S, V, Distância) alimentam\nos neurônios de entrada. Os pesos aprendidos\nmultiplicam cada sinal antes de propagar.',
-    formula:'sinal = valor × peso_adaptativo\nCada saída = Σ(entradas × pesos)\nNormalização: softmax dos escores'
-  },
-  {
-    num:'PASSO 4 / 5', title:'🏆 Classificação — Qual Cor É?',
-    desc:'Cada neurônio de saída representa uma cor.\nO de maior ativação "vence" e define\na regra de comportamento do robô.',
-    formula:'score[i] = base × w_H × (s>0.5 ? w_S : 1)\nDecisão = argmax(score[0..5])\nConfiança = max_score / Σ scores'
-  },
-  {
-    num:'PASSO 5 / 5', title:'🧬 Aprendizado — Reforço',
-    desc:'Após cada colisão, os pesos se adaptam.\nRecompensa (+1) se capturou cor boa.\nPunição (−1) se colidiu com cor perigosa.',
-    formula:'w[i] += 0.06 × reward × ruído\nw[i] = clamp(w[i], 0.5, 1.5)\nReforço aplicado a: H, S, V, Dist'
-  }
-];
-let currentStep = 0;
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  SOM
-// ═══════════════════════════════════════════════════════════════════════════
-function playBeep(freq,type='sine',dur=90){
-  try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
-    o.type=type;o.frequency.value=freq;o.connect(g);g.connect(a.destination);
-    g.gain.setValueAtTime(.1,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+dur/1000);
-    o.start();o.stop(a.currentTime+dur/1000);}catch(e){}
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  🎵 MÚSICA ARCADE — CHIPTUNE (Web Audio API pura)
-// ═══════════════════════════════════════════════════════════════════════════
-let musicCtx = null, musicPlaying = false;
-let musicNodes = []; // refs para poder parar
-
-// Sequência no estilo arcade/chiptune — escala pentatônica + baixo + percussão
-const NOTE = n => 440 * Math.pow(2, (n - 69) / 12); // MIDI → Hz
-const BPM  = 140;
-const BEAT = 60 / BPM;
-
-// Melodia principal (notas MIDI, duração em beats)
-const MELODY = [
-  [76,.5],[76,.25],[79,.25],[76,.5],[74,.5],
-  [76,.5],[76,.25],[81,.25],[79,1],
-  [76,.5],[76,.25],[79,.25],[76,.5],[74,.5],
-  [72,.5],[71,.25],[72,.25],[74,1],
-  [76,.5],[76,.25],[79,.25],[76,.5],[74,.5],
-  [76,.5],[79,.25],[81,.25],[83,.5],[81,.5],
-  [79,.5],[76,.25],[74,.25],[72,.5],[71,.5],
-  [69,.5],[71,.25],[72,.25],[74,1],
-];
-
-// Baixo (oitava abaixo, padrão simples)
-const BASS = [
-  [52,1],[55,1],[52,1],[50,1],
-  [52,1],[55,1],[52,1],[50,1],
-  [48,1],[52,1],[48,1],[50,1],
-  [48,1],[52,1],[50,1],[48,1],
-];
-
-function makeMusicCtx(){
-  if(musicCtx) return musicCtx;
-  musicCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return musicCtx;
-}
-
-function playNote(ac, freq, startTime, dur, type, vol, detune=0){
-  const osc  = ac.createOscillator();
-  const gain = ac.createGain();
-  const filt = ac.createBiquadFilter();
-  filt.type = 'lowpass'; filt.frequency.value = 2200;
-  osc.type = type;
-  osc.frequency.value = freq;
-  osc.detune.value = detune;
-  osc.connect(filt); filt.connect(gain); gain.connect(ac.destination);
-  const att = 0.008, rel = dur * 0.35;
-  gain.gain.setValueAtTime(0, startTime);
-  gain.gain.linearRampToValueAtTime(vol, startTime + att);
-  gain.gain.setValueAtTime(vol, startTime + dur - rel);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
-  osc.start(startTime);
-  osc.stop(startTime + dur + 0.05);
-  musicNodes.push(osc, gain);
-}
-
-function playDrum(ac, startTime, type){
-  // Kick
-  if(type==='kick'){
-    const o=ac.createOscillator(), g=ac.createGain();
-    o.frequency.setValueAtTime(180, startTime);
-    o.frequency.exponentialRampToValueAtTime(40, startTime+0.12);
-    g.gain.setValueAtTime(0.6, startTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, startTime+0.18);
-    o.connect(g); g.connect(ac.destination);
-    o.start(startTime); o.stop(startTime+0.2);
-    musicNodes.push(o, g);
-  }
-  // Snare (ruído)
-  if(type==='snare'){
-    const buf=ac.createBuffer(1,ac.sampleRate*0.1,ac.sampleRate);
-    const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
-    const src=ac.createBufferSource(), g=ac.createGain(), f=ac.createBiquadFilter();
-    f.type='bandpass'; f.frequency.value=1800; f.Q.value=0.5;
-    src.buffer=buf; src.connect(f); f.connect(g); g.connect(ac.destination);
-    g.gain.setValueAtTime(0.18, startTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, startTime+0.09);
-    src.start(startTime); src.stop(startTime+0.12);
-    musicNodes.push(src, g);
-  }
-  // Hi-hat
-  if(type==='hat'){
-    const buf=ac.createBuffer(1,ac.sampleRate*0.04,ac.sampleRate);
-    const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
-    const src=ac.createBufferSource(), g=ac.createGain(), f=ac.createBiquadFilter();
-    f.type='highpass'; f.frequency.value=7000;
-    src.buffer=buf; src.connect(f); f.connect(g); g.connect(ac.destination);
-    g.gain.setValueAtTime(0.07, startTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, startTime+0.035);
-    src.start(startTime); src.stop(startTime+0.05);
-    musicNodes.push(src, g);
-  }
-}
-
-function scheduleMusic(){
-  if(!musicPlaying) return;
-  const ac = makeMusicCtx();
-  const loopDur = MELODY.reduce((s,[,d])=>s+d*BEAT,0);
-  const now = ac.currentTime + 0.05;
-
-  // Melodia (square wave)
-  let t=now;
-  for(let rep=0;rep<2;rep++){
-    for(const [n,d] of MELODY){
-      playNote(ac, NOTE(n), t, d*BEAT*0.88, 'square', 0.08);
-      t+=d*BEAT;
-    }
-  }
-
-  // Baixo (sawtooth)
-  t=now;
-  const bassLoop=loopDur*2;
-  let bi=0;
-  while(t<now+bassLoop){
-    const [n,d]=BASS[bi%BASS.length];
-    playNote(ac, NOTE(n), t, d*BEAT*0.7, 'sawtooth', 0.06, -5);
-    t+=d*BEAT; bi++;
-  }
-
-  // Contraponto (triangle, 1 oitava acima, offset)
-  t = now + BEAT*2;
-  const COUNTER=[
-    [83,.25],[81,.25],[79,.25],[76,.5],[null,.25],
-    [81,.25],[79,.25],[76,.25],[74,.5],[null,.25],
-    [83,.25],[84,.25],[83,.25],[81,.5],[null,.25],
-    [79,.25],[76,.25],[74,.25],[72,.5],[null,.5],
-  ];
-  for(let rep=0;rep<4;rep++){
-    for(const [n,d] of COUNTER){
-      if(n!==null) playNote(ac, NOTE(n), t, d*BEAT*0.75, 'triangle', 0.045);
-      t+=d*BEAT;
-    }
-  }
-
-  // Percussão (kick+snare+hat)
-  const bars = Math.round(loopDur*2/BEAT/4);
-  for(let bar=0;bar<bars;bar++){
-    const bt=now+bar*4*BEAT;
-    playDrum(ac,bt,'kick');
-    playDrum(ac,bt+BEAT,'hat');
-    playDrum(ac,bt+BEAT*1.5,'hat');
-    playDrum(ac,bt+BEAT*2,'snare');
-    playDrum(ac,bt+BEAT*2.5,'hat');
-    playDrum(ac,bt+BEAT*3,'hat');
-    playDrum(ac,bt+BEAT*3.5,'kick');
-  }
-
-  // Reagenda antes do fim (loop contínuo)
-  const loopTotal = loopDur*2*1000;
-  setTimeout(()=>{ if(musicPlaying) scheduleMusic(); }, loopTotal - 600);
-}
-
-function startMusic(){
-  if(musicPlaying) return;
-  musicPlaying = true;
-  makeMusicCtx();
-  if(musicCtx.state==='suspended') musicCtx.resume();
-  scheduleMusic();
-  document.getElementById('btnMusic').classList.add('active-mode');
-  document.getElementById('btnMusic').innerHTML='<span>🔇</span> MÚSICA';
-}
-
-function stopMusic(){
-  musicPlaying = false;
-  musicNodes.forEach(n=>{ try{n.stop&&n.stop(); n.disconnect&&n.disconnect();}catch(e){} });
-  musicNodes=[];
-  document.getElementById('btnMusic').classList.remove('active-mode');
-  document.getElementById('btnMusic').innerHTML='<span>🎵</span> MÚSICA';
-}
-
-function toggleMusic(){
-  musicPlaying ? stopMusic() : startMusic();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-class Particle{
-  constructor(x,y,col,v=0.5){
-    this.x=x??Math.random()*(W||400);this.y=y??Math.random()*(H||400);
-    this.vx=(Math.random()-.5)*v;this.vy=(Math.random()-.5)*v;
-    this.life=Math.random()*.5+.5;this.maxLife=this.life;
-    this.size=Math.random()*1.5+.5;this.col=col||'rgba(0,255,163,';
-    this.ambient=!x&&!y;
-  }
-  update(){this.x+=this.vx;this.y+=this.vy;this.life-=this.ambient?.004:.022;}
-  draw(){ctx.fillStyle=this.col+(this.life/this.maxLife*(this.ambient?.22:.65))+')';
-    ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);ctx.fill();}
-}
-function burst(x,y,col,n=12){for(let i=0;i<n;i++){const p=new Particle(x,y,col,2.5+Math.random()*3);p.size=Math.random()*3+1;particles.push(p);}}
-function addFloat(x,y,text,color){floatLabels.push({x,y,text,color,life:1,vy:-.7});}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  RESIZE
-// ═══════════════════════════════════════════════════════════════════════════
-function resizeCanvas(){
-  const wrap=document.getElementById('arena-wrap');
-  W=wrap.clientWidth||400; H=wrap.clientHeight||400;
-  canvas.width=W; canvas.height=H;
-  particles=particles.filter(p=>!p.ambient);
-  for(let i=0;i<22;i++) particles.push(new Particle());
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  REGRAS
-// ═══════════════════════════════════════════════════════════════════════════
-const RULES=[
-  {name:'VERMELHO',hex:'#ff2255',action:'CAPTURAR', pts:+10,flee:false,hueRanges:[[0,15],[345,360]],minS:.30,minV:.20},
-  {name:'VERDE',   hex:'#00ff88',action:'APROXIMAR',pts:+8, flee:false,hueRanges:[[75,165]],         minS:.25,minV:.20},
-  {name:'AZUL',    hex:'#0099ff',action:'RECUAR',   pts:-5, flee:true, hueRanges:[[180,270]],         minS:.25,minV:.15},
-  {name:'AMARELO', hex:'#ffdd00',action:'ALERTAR',  pts:-8, flee:true, hueRanges:[[40,75]],            minS:.35,minV:.30},
-  {name:'MAGENTA', hex:'#ff22ff',action:'CAPTURAR', pts:+15,flee:false,hueRanges:[[270,320]],          minS:.30,minV:.20},
-  {name:'CIANO',   hex:'#00eeff',action:'DESVIAR',  pts:-3, flee:true, hueRanges:[[15,40]],            minS:.35,minV:.20},
-];
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  UTILS
-// ═══════════════════════════════════════════════════════════════════════════
-const rand=(a,b)=>Math.random()*(b-a)+a;
-const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-const fmt=t=>String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
-
-function rgbToHsv(r,g,b){
-  r/=255;g/=255;b/=255;
-  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
-  let h=0,s=mx===0?0:d/mx,v=mx;
-  if(d!==0){if(mx===r)h=((g-b)/d+(g<b?6:0))/6;else if(mx===g)h=((b-r)/d+2)/6;else h=((r-g)/d+4)/6;}
-  return{h:h*360,s,v};
-}
-const inRange=(h,ranges)=>ranges.some(([a,b])=>h>=a&&h<=b);
-
-function scoreColor(hex){
-  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-  const{h,s,v}=rgbToHsv(r,g,b);
-  const raw=RULES.map(c=>{
-    if(!inRange(h,c.hueRanges)) return 0;
-    if(s<c.minS||v<c.minV) return .1;
-    const base=.6+.2*((s-c.minS)/(1-c.minS))+.2*((v-c.minV)/(1-c.minV));
-    return base*adaptiveWeights[0]*(s>.5?adaptiveWeights[1]:1);
-  });
-  const sum=raw.reduce((a,b)=>a+b,0)||1;
-  return raw.map(x=>x/sum);
-}
-
-function adjustWeights(reward){
-  for(let i=0;i<adaptiveWeights.length;i++){
-    adaptiveWeights[i]+=.06*reward*(Math.random()-.5);
-    adaptiveWeights[i]=Math.max(.5,Math.min(1.5,adaptiveWeights[i]));
-  }
-  learnCount++;
-}
-
-function spawnObject(){
-  const rule=RULES[Math.floor(Math.random()*RULES.length)];
-  let x,y,tries=0;
-  do{x=rand(OBJ_R+16,W-OBJ_R-16);y=rand(OBJ_R+16,H-OBJ_R-16);tries++;}
-  while(robot&&dist({x,y},robot)<140&&tries<20);
-  return{x,y,vx:rand(-1.5,1.5),vy:rand(-1.5,1.5),rule,pt:0,born:Date.now(),ttl:rand(6000,10000),pulse:Math.random()*Math.PI*2};
-}
-
-function reset(){
-  resizeCanvas();
-  robot={x:W/2,y:H/2,vx:0,vy:0,angle:0,target:null,state:'idle',bt:0};
-  objects=[];score=0;collected=0;fled_c=0;dmg=0;tick=0;
-  lastNear=null;lastScores=[];scoreHistory=[];
-  adaptiveWeights=[1,1,1,1];learnCount=0;
-  radarAngle=0;radarPulses=[];robotBobble=0;
-  for(let i=0;i<8;i++) objects.push(spawnObject());
-  document.getElementById('log').innerHTML='';
-  updateUI();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  LOG
-// ═══════════════════════════════════════════════════════════════════════════
-function addLog(msg,color){
-  const el=document.getElementById('log');
-  const div=document.createElement('div');div.className='log-entry';
-  div.innerHTML=`<span class="log-time">${fmt(tick)}</span><span class="log-msg" style="color:${color||'var(--neon)'}">${msg}</span>`;
-  el.insertBefore(div,el.firstChild);if(el.children.length>60)el.removeChild(el.lastChild);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  CHART
-// ═══════════════════════════════════════════════════════════════════════════
-function drawChart(){
-  const c=document.getElementById('chart');if(!c)return;
-  c.width=c.offsetWidth||270;const g=c.getContext('2d'),cW=c.width,cH=c.height;
-  g.clearRect(0,0,cW,cH);
-  if(scoreHistory.length<2){g.fillStyle='rgba(0,255,163,.04)';g.fillRect(0,0,cW,cH);return;}
-  const mn=Math.min(...scoreHistory),mx=Math.max(...scoreHistory),range=mx-mn||1;
-  g.fillStyle='rgba(0,255,163,.04)';g.fillRect(0,0,cW,cH);
-  g.beginPath();scoreHistory.forEach((v,i)=>{const x=(i/(scoreHistory.length-1))*cW,y=cH-((v-mn)/range)*(cH-4)-2;i===0?g.moveTo(x,y):g.lineTo(x,y);});
-  g.lineTo(cW,cH);g.lineTo(0,cH);g.closePath();
-  const gr=g.createLinearGradient(0,0,0,cH);gr.addColorStop(0,'rgba(0,255,163,.3)');gr.addColorStop(1,'rgba(0,255,163,.02)');
-  g.fillStyle=gr;g.fill();
-  g.beginPath();scoreHistory.forEach((v,i)=>{const x=(i/(scoreHistory.length-1))*cW,y=cH-((v-mn)/range)*(cH-4)-2;i===0?g.moveTo(x,y):g.lineTo(x,y);});
-  g.strokeStyle='#00ffa3';g.lineWidth=1.5;g.shadowColor='#00ffa3';g.shadowBlur=5;g.stroke();g.shadowBlur=0;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  NEURAL VIZ (painel pequeno)
-// ═══════════════════════════════════════════════════════════════════════════
-function drawSynapsesSmall(){
-  const svg=document.getElementById('neural-svg-small');svg.innerHTML='';if(!lastNear)return;
-  const inputs=document.querySelectorAll('#neural-viz-small .neuron[id^="n-"]');
-  const outputs=document.querySelectorAll('#neural-output-small .neuron');
-  const pRect=document.getElementById('panel').getBoundingClientRect();
-  inputs.forEach(inp=>{const ir=inp.getBoundingClientRect();outputs.forEach(out=>{
-    const or=out.getBoundingClientRect();
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',ir.left-pRect.left+ir.width/2);line.setAttribute('y1',ir.top-pRect.top+ir.height/2);
-    line.setAttribute('x2',or.left-pRect.left+or.width/2);line.setAttribute('y2',or.top-pRect.top+or.height/2);
-    line.setAttribute('stroke','rgba(0,255,163,.18)');line.setAttribute('stroke-width','1');
-    line.setAttribute('style','animation:synapse-flow 1.6s ease-in-out infinite');svg.appendChild(line);
-  });});
-}
-
-function updateNeuralVizSmall(){
-  if(!lastNear){document.getElementById('neural-output-small').innerHTML='<div class="none-msg" style="font-size:8px">AGUARDANDO...</div>';['n-h','n-s','n-v','n-d'].forEach(id=>document.getElementById(id).classList.remove('active'));return;}
-  const rr=parseInt(lastNear.rule.hex.slice(1,3),16),gg=parseInt(lastNear.rule.hex.slice(3,5),16),bb=parseInt(lastNear.rule.hex.slice(5,7),16);
-  const{h,s,v}=rgbToHsv(rr,gg,bb);const d=dist(robot,lastNear);
-  document.getElementById('nv-h').textContent=Math.round(h)+'°';document.getElementById('nv-s').textContent=Math.round(s*100)+'%';
-  document.getElementById('nv-v').textContent=Math.round(v*100)+'%';document.getElementById('nv-d').textContent=Math.round(d)+'px';
-  document.getElementById('n-h').classList.toggle('active',h/360>.3);document.getElementById('n-s').classList.toggle('active',s>.3);
-  document.getElementById('n-v').classList.toggle('active',v>.3);document.getElementById('n-d').classList.toggle('active',d/DETECT_R<.7);
-  let html='<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;">';
-  RULES.forEach((rule,i)=>{const sc=Math.round((lastScores[i]||0)*100),active=sc>30,c=rule.hex;
-    html+=`<div style="display:flex;align-items:center;gap:2px;padding:1px;"><div class="neuron ${active?'active':''}" style="${active?`background:${c}33;border-color:${c};box-shadow:0 0 8px ${c}88`:''}; font-size:6px;" title="${sc}%">${rule.name[0]}</div><span style="font-size:7px;color:${c};font-family:'Orbitron',sans-serif;font-weight:700">${sc}%</span></div>`;});
-  html+='</div>';
-  document.getElementById('neural-output-small').innerHTML=html;
-  setTimeout(drawSynapsesSmall,50);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  🎓 SALA DE AULA — REDE NEURAL GRANDE ANIMADA
-// ═══════════════════════════════════════════════════════════════════════════
-/*
-  Layout da rede:
-  Camada Entrada (4 nós)  →  Oculta (6 nós)  →  Saída (6 nós, 1 por cor)
-  Posições em SVG viewBox 0 0 380 220
-*/
-const NN_LAYOUT = {
-  input:  [{x:40,y:40,id:'I-H',lbl:'H'},{x:40,y:88,id:'I-S',lbl:'S'},{x:40,y:136,id:'I-V',lbl:'V'},{x:40,y:184,id:'I-D',lbl:'D'}],
-  hidden: [{x:190,y:25},{x:190,y:65},{x:190,y:105},{x:190,y:145},{x:190,y:185},{x:190,y:210}],
-  output: [{x:340,y:25},{x:340,y:63},{x:340,y:101},{x:340,y:139},{x:340,y:177},{x:340,y:210}],
-};
-
-// Pacotes visuais de dados percorrendo os axônios
-let synapsePackets = []; // {x1,y1,x2,y2,t,dur,color,weight}
-
-function spawnPackets(){
-  if(!lastNear||!explainMode) return;
-  const rr=parseInt(lastNear.rule.hex.slice(1,3),16),gg=parseInt(lastNear.rule.hex.slice(3,5),16),bb=parseInt(lastNear.rule.hex.slice(5,7),16);
-  const{h,s,v}=rgbToHsv(rr,gg,bb);
-  const inputVals=[h/360,s,v,dist(robot,lastNear)/DETECT_R];
-  // input → hidden
-  NN_LAYOUT.input.forEach((inp,ii)=>{
-    if(inputVals[ii]>.15) NN_LAYOUT.hidden.forEach(hid=>{
-      if(Math.random()<.4) synapsePackets.push({x1:inp.x,y1:inp.y,x2:hid.x,y2:hid.y,t:Math.random(),dur:1.8+Math.random()*1.4,color:'#00ffa3',weight:inputVals[ii]});
-    });
-  });
-  // hidden → output
-  NN_LAYOUT.hidden.forEach(hid=>{
-    NN_LAYOUT.output.forEach((out,oi)=>{
-      if(Math.random()<.35) synapsePackets.push({x1:hid.x,y1:hid.y,x2:out.x,y2:out.y,t:Math.random(),dur:1.4+Math.random(),color:RULES[oi].hex,weight:.5+Math.random()*.5});
-    });
-  });
-}
-
-let packetSpawnTimer=0;
-
-function updateClassroomNeural(){
-  if(!explainMode) return;
-  const svg = document.getElementById('class-neural-svg');
-  if(!svg) return;
-  svg.innerHTML='';
-
-  const rr2=lastNear?parseInt(lastNear.rule.hex.slice(1,3),16):0;
-  const gg2=lastNear?parseInt(lastNear.rule.hex.slice(3,5),16):0;
-  const bb2=lastNear?parseInt(lastNear.rule.hex.slice(5,7),16):0;
-  const hsv=lastNear?rgbToHsv(rr2,gg2,bb2):{h:0,s:0,v:0};
-  const inputVals=[hsv.h/360,hsv.s,hsv.v,lastNear?dist(robot,lastNear)/DETECT_R:0];
-  const scores=lastNear?lastScores:RULES.map(()=>0);
-
-  // ── Axônios (fundo) ──
-  const drawAxon=(x1,y1,x2,y2,color,alpha,width)=>{
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',x1);line.setAttribute('y1',y1);line.setAttribute('x2',x2);line.setAttribute('y2',y2);
-    line.setAttribute('stroke',color);line.setAttribute('stroke-width',width||1);line.setAttribute('opacity',alpha||.18);
-    svg.appendChild(line);
-  };
-  NN_LAYOUT.input.forEach((inp,ii)=>{NN_LAYOUT.hidden.forEach(hid=>{drawAxon(inp.x,inp.y,hid.x,hid.y,'#00ffa3',.1+inputVals[ii]*.15,.8);});});
-  NN_LAYOUT.hidden.forEach(hid=>{NN_LAYOUT.output.forEach((out,oi)=>{const sc=scores[oi]||0;drawAxon(hid.x,hid.y,out.x,out.y,RULES[oi].hex,.08+sc*.25,.7+sc*1.2);});});
-
-  // ── Pacotes viajando nos axônios ──
-  teacherPhase+=0.018;
-  packetSpawnTimer++;
-  if(packetSpawnTimer>40&&lastNear){packetSpawnTimer=0;spawnPackets();}
-  synapsePackets=synapsePackets.filter(p=>{
-    p.t+=1/(p.dur*60);if(p.t>1) return false;
-    const ex=p.x1+(p.x2-p.x1)*p.t, ey=p.y1+(p.y2-p.y1)*p.t;
-    const alpha=Math.sin(p.t*Math.PI);
-    const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circ.setAttribute('cx',ex);circ.setAttribute('cy',ey);circ.setAttribute('r',2.5+p.weight*1.5);
-    circ.setAttribute('fill',p.color);circ.setAttribute('opacity',alpha*.85);
-    const filt=document.createElementNS('http://www.w3.org/2000/svg','filter');
-    filt.setAttribute('id','gp'+Math.random().toString(36).slice(2));
-    const blur=document.createElementNS('http://www.w3.org/2000/svg','feGaussianBlur');
-    blur.setAttribute('stdDeviation','2');filt.appendChild(blur);svg.appendChild(filt);
-    circ.setAttribute('filter',`url(#${filt.id})`);
-    svg.appendChild(circ);
-    // Núcleo brilhante
-    const core=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    core.setAttribute('cx',ex);core.setAttribute('cy',ey);core.setAttribute('r',1.5);
-    core.setAttribute('fill','white');core.setAttribute('opacity',alpha*.7);
-    svg.appendChild(core);
-    return true;
-  });
-
-  // ── Neurônios ──
-  const drawNeuron=(x,y,label,active,color,valueStr,radius)=>{
-    const R=radius||12;const c=color||'#00ffa3';
-    const glow=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    glow.setAttribute('cx',x);glow.setAttribute('cy',y);glow.setAttribute('r',R+6);
-    glow.setAttribute('fill',c);glow.setAttribute('opacity',active?.18:.04);svg.appendChild(glow);
-
-    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circle.setAttribute('cx',x);circle.setAttribute('cy',y);circle.setAttribute('r',R);
-    circle.setAttribute('fill',active?c+'33':'rgba(0,0,0,.5)');
-    circle.setAttribute('stroke',active?c:'rgba(0,255,163,.25)');
-    circle.setAttribute('stroke-width',active?'2':'1');
-    if(active){const pulse=document.createElementNS('http://www.w3.org/2000/svg','animate');
-      pulse.setAttribute('attributeName','r');pulse.setAttribute('values',`${R};${R+4};${R}`);
-      pulse.setAttribute('dur','1s');pulse.setAttribute('repeatCount','indefinite');circle.appendChild(pulse);}
-    svg.appendChild(circle);
-
-    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
-    txt.setAttribute('x',x);txt.setAttribute('y',y+1);txt.setAttribute('text-anchor','middle');
-    txt.setAttribute('dominant-baseline','middle');txt.setAttribute('font-family','Orbitron,sans-serif');
-    txt.setAttribute('font-size','7');txt.setAttribute('font-weight','700');
-    txt.setAttribute('fill',active?c:'rgba(0,255,163,.35)');txt.textContent=label;svg.appendChild(txt);
-
-    if(valueStr!==undefined){
-      const vt=document.createElementNS('http://www.w3.org/2000/svg','text');
-      vt.setAttribute('x',x);vt.setAttribute('y',y+R+14);vt.setAttribute('text-anchor','middle');
-      vt.setAttribute('font-family','Share Tech Mono,monospace');vt.setAttribute('font-size','7');
-      vt.setAttribute('fill',active?c:'rgba(0,255,163,.3)');vt.textContent=valueStr;svg.appendChild(vt);
-    }
-  };
-
-  const inputLabels=['H','S','V','D'];
-  const inputNames=['MATIZ','SAT','BRILHO','DIST'];
-  NN_LAYOUT.input.forEach((n,i)=>{drawNeuron(n.x,n.y,inputLabels[i],inputVals[i]>.15,'#00ffa3',inputNames[i]);});
-  NN_LAYOUT.hidden.forEach((n,i)=>{const a=lastNear&&inputVals.some(v=>v>.2);drawNeuron(n.x,n.y,'H'+(i+1),a,'#00c8ff');});
-  NN_LAYOUT.output.forEach((n,i)=>{const sc=scores[i]||0,active=sc>.25;const R=8+sc*10;drawNeuron(n.x,n.y,RULES[i].name[0],active,RULES[i].hex,Math.round(sc*100)+'%',Math.max(10,R));});
-
-  // ── Labels de camada ──
-  const layerLabel=(x,label)=>{const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('x',x);t.setAttribute('y',8);t.setAttribute('text-anchor','middle');
-    t.setAttribute('font-family','Share Tech Mono,monospace');t.setAttribute('font-size','7');
-    t.setAttribute('fill','rgba(0,255,163,.3)');t.setAttribute('letter-spacing','2');t.textContent=label;svg.appendChild(t);};
-  layerLabel(40,'ENTRADA');layerLabel(190,'OCULTA');layerLabel(340,'SAÍDA');
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  🎓 SALA DE AULA — PAINEL DIDÁTICO
-// ═══════════════════════════════════════════════════════════════════════════
-function updateClassroomPanel(){
-  if(!explainMode) return;
-
-  // Tick display
-  const ctd=document.getElementById('class-tick-display');
-  if(ctd) ctd.textContent='T: '+fmt(tick)+' · 🐢 '+Math.round(TEACHER_SPEED_FACTOR*100)+'%';
-
-  // Passo ativo
-  const step=CLASS_STEPS[currentStep];
-  document.getElementById('class-step-num').textContent=step.num;
-  document.getElementById('class-step-title').textContent=step.title;
-  document.getElementById('class-step-desc').textContent=step.desc;
-  document.getElementById('class-step-formula').textContent=step.formula;
-
-  if(!lastNear){
-    // Sem alvo — limpa HSV
-    ['h','s','v','d'].forEach(k=>{
-      document.getElementById('chsv-'+k).classList.remove('lit');
-      document.getElementById('chsv-'+k+'v').textContent='—';
-    });
-    document.getElementById('class-act-list').innerHTML='<div style="font-size:9px;color:rgba(0,255,163,.3)">Aguardando alvo no raio de detecção...</div>';
-    document.getElementById('class-dec-name').textContent='🔍 EXPLORANDO';
-    document.getElementById('class-dec-rationale').textContent='Nenhum alvo detectado.\nRaio de detecção: '+DETECT_R+'px';
-    document.getElementById('class-dec-box').style.background='rgba(0,255,163,.04)';
-    return;
-  }
-
-  const rr=parseInt(lastNear.rule.hex.slice(1,3),16),gg=parseInt(lastNear.rule.hex.slice(3,5),16),bb=parseInt(lastNear.rule.hex.slice(5,7),16);
-  const{h,s,v}=rgbToHsv(rr,gg,bb);
-  const d=Math.round(dist(robot,lastNear));
-
-  // HSV ao vivo
-  document.getElementById('chsv-hv').textContent=Math.round(h)+'°';
-  document.getElementById('chsv-sv').textContent=Math.round(s*100)+'%';
-  document.getElementById('chsv-vv').textContent=Math.round(v*100)+'%';
-  document.getElementById('chsv-dv').textContent=d+'px';
-  document.getElementById('chsv-hm').textContent=h<30||h>330?'vermelho':h<75?'amarelo':h<165?'verde':h<270?'azul':'magenta';
-  document.getElementById('chsv-sm').textContent=s>.7?'muito vívido':s>.4?'saturado':'pálido';
-  document.getElementById('chsv-vm').textContent=v>.7?'bem iluminado':v>.4?'médio':'escuro';
-  document.getElementById('chsv-dm').textContent=d<50?'muito próximo':d<80?'próximo':'distante';
-  ['h','s','v','d'].forEach(k=>document.getElementById('chsv-'+k).classList.add('lit'));
-
-  // Ativações grandes
-  let html='';
-  RULES.forEach((r,i)=>{
-    const sc=Math.round((lastScores[i]||0)*100);
-    html+=`<div class="class-act-row">
-      <div class="class-act-dot" style="background:${r.hex};color:${r.hex}"></div>
-      <div class="class-act-name">${r.name}</div>
-      <div class="class-act-bar-bg"><div class="class-act-bar" style="width:${sc}%;background:${r.hex};color:${r.hex}"></div></div>
-      <div class="class-act-pct" style="color:${r.hex}">${sc}%</div>
-    </div>`;
-  });
-  document.getElementById('class-act-list').innerHTML=html;
-
-  // Decisão
-  const r=lastNear.rule;
-  document.getElementById('class-dec-name').textContent=(r.flee?'⚠ FUGIR DE ':'✓ CAPTURAR ')+r.name;
-  document.getElementById('class-dec-rationale').textContent=
-    `Cor detectada: ${r.name} (H=${Math.round(h)}°)\n`+
-    `Regra: ${r.flee?'cor perigosa → fugir imediatamente':'cor valiosa → perseguir e capturar'}\n`+
-    `Ação: ${r.action} · ${r.pts>0?'+':''}${r.pts} pontos\n`+
-    `Pesos atuais: H=${adaptiveWeights[0].toFixed(2)}  S=${adaptiveWeights[1].toFixed(2)}  V=${adaptiveWeights[2].toFixed(2)}  D=${adaptiveWeights[3].toFixed(2)}`;
-  const decBox=document.getElementById('class-dec-box');
-  decBox.style.background=r.flee?'rgba(255,26,94,.1)':'rgba(0,255,163,.08)';
-  decBox.style.borderColor=r.flee?'rgba(255,26,94,.5)':'rgba(0,255,163,.35)';
-  document.getElementById('class-dec-name').style.color=r.flee?'#ff1a5e':'#00ffa3';
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  UI PAINEL NORMAL
-// ═══════════════════════════════════════════════════════════════════════════
-function updateUI(){
-  document.getElementById('pts').textContent=score;
-  document.getElementById('col').textContent=collected;
-  document.getElementById('fug').textContent=fled_c;
-  document.getElementById('dmg').textContent=dmg;
-  document.getElementById('learn-count').textContent=learnCount;
-  const best=parseInt(localStorage.getItem('ncs5_hs')||'0');
-  if(score>best) localStorage.setItem('ncs5_hs',score);
-  document.getElementById('best').textContent=Math.max(score,best);
-  adaptiveWeights.forEach((w,i)=>{const el=document.getElementById('w'+i);if(el)el.textContent=w.toFixed(2);});
-  if(lastNear){
-    const rr=parseInt(lastNear.rule.hex.slice(1,3),16),gg=parseInt(lastNear.rule.hex.slice(3,5),16),bb=parseInt(lastNear.rule.hex.slice(5,7),16);
-    const{h,s,v}=rgbToHsv(rr,gg,bb);
-    document.getElementById('near-none').style.display='none';document.getElementById('near-info').style.display='block';
-    document.getElementById('hval').textContent=Math.round(h);document.getElementById('sval').textContent=Math.round(s*100);
-    document.getElementById('vval').textContent=Math.round(v*100);document.getElementById('dval').textContent=Math.round(dist(robot,lastNear));
-  } else {document.getElementById('near-none').style.display='block';document.getElementById('near-info').style.display='none';}
-  const sp=document.getElementById('scores-panel');sp.innerHTML='';
-  RULES.forEach((c,i)=>{const pct=Math.round((lastScores[i]||0)*100);
-    sp.innerHTML+=`<div class="bar-group"><div class="bar-header"><span class="bar-name"><span class="bar-dot" style="background:${c.hex}"></span>${c.name}</span><span class="bar-pct">${pct}%</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${c.hex};box-shadow:0 0 5px ${c.hex}"></div></div></div>`;});
-  if(robot.target){
-    const r=robot.target.rule,scores=scoreColor(r.hex),bi=scores.indexOf(Math.max(...scores)),conf=Math.round(scores[bi]*100);
-    document.getElementById('dec-name').textContent=(r.flee?'⚠ FUGIR DE ':'TARGET: ')+r.name;
-    document.getElementById('dec-sub').textContent=`${r.action} · ${r.pts>0?'+':''}${r.pts} pts`;
-    document.getElementById('dec-box').style.background=r.flee?'rgba(255,26,94,.08)':'rgba(0,255,163,.06)';
-    document.getElementById('dec-box').style.borderColor=r.flee?'rgba(255,26,94,.4)':'rgba(0,255,163,.3)';
-    document.getElementById('conf-pct').textContent=conf+'%';
-    document.getElementById('conf-bar').style.width=conf+'%';
-    document.getElementById('conf-bar').style.background=r.flee?'#ff1a5e':'#00ffa3';
-  } else {
-    document.getElementById('dec-name').textContent='ESCANEANDO...';
-    document.getElementById('dec-sub').textContent='Aguardando detecção';
-    document.getElementById('dec-box').style.background='rgba(0,255,163,.04)';
-    document.getElementById('dec-box').style.borderColor='rgba(0,255,163,.18)';
-    document.getElementById('conf-pct').textContent='—';
-    document.getElementById('conf-bar').style.width='0%';
-  }
-  updateNeuralVizSmall();
-  drawChart();
-  updateClassroomPanel();
-  updateClassroomNeural();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  RADAR
-// ═══════════════════════════════════════════════════════════════════════════
-function updateRadar(){
-  radarAngle+=0.032;if(radarAngle>=Math.PI*2){radarAngle-=Math.PI*2;radarPulses.push({r:ROBOT_R+2,alpha:1});}
-  radarPulses=radarPulses.filter(p=>{p.r+=1.8;p.alpha-=.014;return p.alpha>0&&p.r<DETECT_R+20;});
-}
-function drawRadar(rx,ry,hasTarget){
-  const c=hasTarget?'0,255,163':'0,140,70';
-  radarPulses.forEach(p=>{ctx.beginPath();ctx.arc(rx,ry,p.r,0,Math.PI*2);ctx.strokeStyle=`rgba(${c},${p.alpha*.35})`;ctx.lineWidth=1;ctx.stroke();});
-  const TRAIL=Math.PI*.38,steps=14;
-  for(let i=0;i<steps;i++){const frac=(steps-i)/steps;ctx.beginPath();ctx.moveTo(rx,ry);ctx.arc(rx,ry,DETECT_R,radarAngle-TRAIL*frac,radarAngle-TRAIL*(frac-1/steps));ctx.closePath();ctx.fillStyle=`rgba(${c},${frac*(hasTarget?.12:.04)})`;ctx.fill();}
-  const ex=rx+Math.cos(radarAngle)*DETECT_R,ey=ry+Math.sin(radarAngle)*DETECT_R;
-  ctx.save();ctx.shadowColor=hasTarget?'#00ffa3':'#00aa55';ctx.shadowBlur=hasTarget?12:5;
-  ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(ex,ey);
-  ctx.strokeStyle=hasTarget?'rgba(0,255,163,.85)':'rgba(0,140,70,.55)';ctx.lineWidth=hasTarget?1.8:1.2;ctx.stroke();
-  ctx.restore();
-  ctx.save();ctx.shadowColor='#00ffa3';ctx.shadowBlur=hasTarget?16:5;
-  ctx.beginPath();ctx.arc(ex,ey,hasTarget?3:1.8,0,Math.PI*2);ctx.fillStyle=hasTarget?'#00ffa3':'#00aa55';ctx.fill();ctx.restore();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  LÓGICA DO JOGO
-// ═══════════════════════════════════════════════════════════════════════════
-function vision(){
-  let nearest=null,nd=Infinity;
-  for(const o of objects){const d=dist(robot,o);if(d<DETECT_R&&d<nd){nearest=o;nd=d;}}
-  lastNear=nearest;lastScores=nearest?scoreColor(nearest.rule.hex):[];
-  if(!nearest){robot.state='idle';robot.target=null;return;}
-  robot.target=nearest;robot.state=nearest.rule.flee?'flee':'chase';
-}
-
-function moveRobot(){
-  // No modo professor, velocidade máxima menor
-  const MV=explainMode?2.2:3.8, AC=explainMode?0.22:0.35, FR=0.90;
-  if(robot.state==='idle'){robot.vx+=rand(-.2,.2);robot.vy+=rand(-.2,.2);}
-  else if(robot.state==='chase'&&robot.target){const dx=robot.target.x-robot.x,dy=robot.target.y-robot.y,d=Math.hypot(dx,dy)||1;robot.vx+=dx/d*AC;robot.vy+=dy/d*AC;robot.angle=Math.atan2(dy,dx);}
-  else if(robot.state==='flee'&&robot.target){const dx=robot.x-robot.target.x,dy=robot.y-robot.target.y,d=Math.hypot(dx,dy)||1;robot.vx+=dx/d*AC;robot.vy+=dy/d*AC;}
-  robot.vx*=FR;robot.vy*=FR;
-  const spd=Math.hypot(robot.vx,robot.vy);if(spd>MV){robot.vx=robot.vx/spd*MV;robot.vy=robot.vy/spd*MV;}
-  robot.x=Math.max(ROBOT_R,Math.min(W-ROBOT_R,robot.x+robot.vx));
-  robot.y=Math.max(ROBOT_R,Math.min(H-ROBOT_R,robot.y+robot.vy));
-  robot.bt++;tick++;robotBobble+=explainMode?.03:.06;
-}
-
-function moveObjects(){
-  const slow=explainMode?.65:.5;
-  for(const o of objects){o.x+=o.vx*slow;o.y+=o.vy*slow;if(o.x<OBJ_R||o.x>W-OBJ_R)o.vx*=-1;if(o.y<OBJ_R||o.y>H-OBJ_R)o.vy*=-1;o.pt++;o.pulse+=.06;}
-}
-
-function collide(){
-  const now=Date.now();
-  objects=objects.filter(o=>{
-    const d=dist(robot,o),exp=(now-o.born)>o.ttl;
-    if(d<ROBOT_R+OBJ_R-5){
-      score+=o.rule.pts;adjustWeights(o.rule.flee?-1:1);
-      glitchEffect=.4;glitchColor=o.rule.flee?'255,26,94':'0,255,163';
-      canvas.style.transform='scale(1.03)';setTimeout(()=>canvas.style.transform='scale(1)',90);
-      playBeep(o.rule.flee?160:700,'sine',100);
-      burst(o.x,o.y,o.rule.flee?'rgba(255,26,94,':'rgba(0,255,163,');
-      addFloat(o.x,o.y-22,(o.rule.pts>0?'+':'')+o.rule.pts,o.rule.flee?'#ff1a5e':'#00ffa3');
-      scoreHistory.push(score);if(scoreHistory.length>80)scoreHistory.shift();
-      if(o.rule.pts<0){dmg++;addLog(`[DANO] ${o.rule.name} ${o.rule.pts} pts`,'#ff1a5e');}
-      else{collected++;addLog(`[CAPTURADO] ${o.rule.name} +${o.rule.pts} pts`,'#00ffa3');}
-      // Auto-avança passo para 5 (aprendizado) na sala de aula
-      if(explainMode){currentStep=4;updateClassroomPanel();}
-      return false;
-    }
-    if(exp){fled_c++;addLog(`[EXPIROU] ${o.rule.name}`,'rgba(0,255,163,.3)');return false;}
-    return true;
-  });
-  while(objects.length<8)objects.push(spawnObject());
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  DESENHO DO ROBÔ
-// ═══════════════════════════════════════════════════════════════════════════
-function drawRobot(rx,ry){
-  const bobY=Math.sin(robotBobble)*2.5;
-  const img=robotImgs[robot.state]||robotImgs.idle;
-  const WR=52,HR=68;
-  ctx.save();ctx.translate(rx,ry+bobY);
-  // Sombra
-  ctx.save();ctx.scale(1,.2);ctx.beginPath();ctx.ellipse(0,HR*.46+10,WR*.35,8,0,0,Math.PI*2);ctx.fillStyle=`rgba(0,0,0,${.22-Math.abs(bobY)*.02})`;ctx.fill();ctx.restore();
-  // Anel de estado
-  const rc=robot.state==='flee'?'255,26,94':robot.state==='chase'?'0,255,163':'0,200,255';
-  ctx.save();ctx.beginPath();ctx.arc(0,0,WR*.52,0,Math.PI*2);
-  ctx.strokeStyle=`rgba(${rc},${.1+.07*Math.sin(tick*.08)})`;ctx.lineWidth=2.5;ctx.shadowColor=`rgba(${rc},1)`;ctx.shadowBlur=8;ctx.stroke();ctx.restore();
-  // Imagem
-  ctx.shadowColor=`rgba(${rc},1)`;ctx.shadowBlur=16;
-  if(img.complete&&img.naturalWidth>0) ctx.drawImage(img,-WR/2,-HR/2,WR,HR);
-  ctx.shadowBlur=0;ctx.restore();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  DESENHO DE OBJETOS
-// ═══════════════════════════════════════════════════════════════════════════
-function drawObject(o){
-  const inR=dist(robot,o)<DETECT_R,pulse=1+.1*Math.sin(o.pulse),r=OBJ_R*pulse;
-  const rr=parseInt(o.rule.hex.slice(1,3),16),gg=parseInt(o.rule.hex.slice(3,5),16),bb=parseInt(o.rule.hex.slice(5,7),16);
-  if(inR&&!o.rule.flee){ctx.save();ctx.setLineDash([3,6]);ctx.strokeStyle=o.rule.hex+'55';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(robot.x,robot.y);ctx.lineTo(o.x,o.y);ctx.stroke();ctx.setLineDash([]);ctx.restore();}
-  if(inR){ctx.beginPath();ctx.arc(o.x,o.y,r+8,0,Math.PI*2);ctx.fillStyle=`rgba(${rr},${gg},${bb},.1)`;ctx.fill();}
-  ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.pulse*.5);
-  ctx.beginPath();for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2-Math.PI/6;i===0?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}
-  ctx.closePath();ctx.fillStyle=`rgba(${rr},${gg},${bb},.22)`;ctx.fill();
-  ctx.strokeStyle=o.rule.hex;ctx.lineWidth=2;ctx.shadowColor=o.rule.hex;ctx.shadowBlur=inR?10:5;ctx.stroke();ctx.shadowBlur=0;
-  ctx.beginPath();ctx.arc(0,0,r*.52,0,Math.PI*2);ctx.fillStyle=`rgba(${rr},${gg},${bb},.45)`;ctx.fill();
-  ctx.fillStyle='rgba(0,0,0,.8)';ctx.font=`bold ${Math.round(r*.65)}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(o.rule.flee?'✕':'+',0,0);
-  ctx.restore();
-  ctx.fillStyle=`rgba(${rr},${gg},${bb},.65)`;ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(o.rule.name,o.x,o.y+OBJ_R+5);
-  const ttlPct=1-(Date.now()-o.born)/o.ttl,bw=18,bx=o.x-bw/2,by=o.y-OBJ_R-9;
-  ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(bx,by,bw,3);ctx.fillStyle=ttlPct>.4?o.rule.hex:'#ff1a5e';ctx.fillRect(bx,by,bw*ttlPct,3);
-
-  // No modo professor: mostrar H/S/V em cima do objeto se for o alvo
-  if(explainMode&&lastNear===o){
-    const{h,s,v}=rgbToHsv(rr,gg,bb);
-    ctx.save();
-    ctx.font='bold 9px "Share Tech Mono"';
-    const labels=[`H:${Math.round(h)}°`,`S:${Math.round(s*100)}%`,`V:${Math.round(v*100)}%`];
-    labels.forEach((lbl,i)=>{
-      const ty=o.y-OBJ_R-28-i*13;
-      const tw=ctx.measureText(lbl).width+8;
-      ctx.fillStyle='rgba(0,0,0,.75)';ctx.strokeStyle=o.rule.hex;ctx.lineWidth=.8;
-      ctx.beginPath();ctx.roundRect?ctx.roundRect(o.x-tw/2,ty-7,tw,14,2):ctx.rect(o.x-tw/2,ty-7,tw,14);
-      ctx.fill();ctx.stroke();
-      ctx.fillStyle=o.rule.hex;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lbl,o.x,ty);
-    });
-    ctx.restore();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  HUD DA ARENA
-// ═══════════════════════════════════════════════════════════════════════════
-function drawHUD(){
-  ctx.save();ctx.setLineDash([2,6]);ctx.lineWidth=1;ctx.strokeStyle='rgba(0,255,163,.18)';ctx.beginPath();ctx.arc(robot.x,robot.y,DETECT_R,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
-  ctx.save();ctx.font='8px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='top';
-  const info=[`X:${String(Math.round(robot.x)).padStart(4,' ')} Y:${String(Math.round(robot.y)).padStart(4,' ')}`,`T:${fmt(tick)} W:[${adaptiveWeights.map(w=>w.toFixed(1)).join(' ')}]`,`MODO: ${robot.state.toUpperCase()}`];
-  info.forEach((line,i)=>{ctx.fillStyle=i===2&&robot.state==='flee'?'rgba(255,26,94,.55)':i===2&&robot.state==='chase'?'rgba(0,255,163,.65)':'rgba(0,255,163,.35)';ctx.fillText(line,8,8+i*11);});
-  ctx.restore();
-
-  if(explainMode&&robot.target){
-    // Linha de rastreio amarela
-    ctx.save();ctx.setLineDash([6,5]);ctx.strokeStyle='rgba(255,208,0,.5)';ctx.lineWidth=1.3;ctx.shadowColor='#ffd000';ctx.shadowBlur=6;ctx.beginPath();ctx.moveTo(robot.x,robot.y);ctx.lineTo(robot.target.x,robot.target.y);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.restore();
-    // Badge no topo
-    ctx.save();ctx.font='bold 9px "Share Tech Mono"';
-    const badge='🎓 SALA DE AULA ATIVA — MODO LENTO';const bw=ctx.measureText(badge).width+18;
-    ctx.fillStyle='rgba(0,40,20,.92)';ctx.strokeStyle='#00ffa3';ctx.lineWidth=1;
-    ctx.beginPath();ctx.roundRect?ctx.roundRect(W/2-bw/2,6,bw,22,3):ctx.rect(W/2-bw/2,6,bw,22);
-    ctx.fill();ctx.stroke();ctx.fillStyle='#00ffa3';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(badge,W/2,18);ctx.restore();
-  }
-
-  // Float labels
-  floatLabels=floatLabels.filter(fl=>{fl.y+=fl.vy;fl.life-=.022;if(fl.life<=0)return false;
-    ctx.save();ctx.globalAlpha=fl.life;ctx.font='bold 12px "Orbitron",sans-serif';ctx.fillStyle=fl.color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor=fl.color;ctx.shadowBlur=7;ctx.fillText(fl.text,fl.x,fl.y);ctx.restore();return true;});
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  DRAW FRAME COMPLETO
-// ═══════════════════════════════════════════════════════════════════════════
-function draw(){
-  ctx.fillStyle='#060b1a';ctx.fillRect(0,0,W,H);
-  ctx.save();ctx.strokeStyle='rgba(0,255,163,.045)';ctx.lineWidth=1;
-  for(let x=0;x<W;x+=44){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-  for(let y=0;y<H;y+=44){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-  ctx.restore();
-  particles.forEach(p=>{p.update();p.draw();});
-  if(Math.random()<.22&&particles.filter(p=>p.ambient).length<26) particles.push(new Particle());
-  particles=particles.filter(p=>p.life>0);
-  updateRadar();drawRadar(robot.x,robot.y,!!lastNear);
-  for(const o of objects) drawObject(o);
-  drawRobot(robot.x,robot.y);
-  drawHUD();
-  if(glitchEffect>0){
-    ctx.fillStyle=`rgba(${glitchColor},${glitchEffect*.09})`;ctx.fillRect(0,0,W,H);
-    if(glitchEffect>.3){const gy=Math.random()*H;ctx.fillStyle=`rgba(${glitchColor},${glitchEffect*.2})`;ctx.fillRect(0,gy,W,2+Math.random()*4);}
-    glitchEffect-=.03;
-  }
-}
-
-// (mainLoop abaixo)
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  CONTROLES
-// ═══════════════════════════════════════════════════════════════════════════
-function togglePause(){
-  paused=!paused;
-  document.getElementById('btnPlay').innerHTML=paused?'<span>▶</span> CONTINUAR':'<span>⏸</span> PAUSAR';
-  document.getElementById('btnPlay2').textContent=paused?'Continuar':'Pausar';
-}
-function cycleSpeed(){
-  if(explainMode) return; // velocidade travada no modo professor
-  speedIdx=(speedIdx+1)%SPEEDS.length;
-  document.getElementById('btnSpeed').innerHTML=`<span>⚡</span> ${SPEEDS[speedIdx]}×`;
-  document.getElementById('btnSpeed2').textContent=SPEED_LABELS[speedIdx];
-}
-
-function toggleTeacher(){
-  explainMode=!explainMode;
-  const btn=document.getElementById('btnTeacher');
-  btn.classList.toggle('active-mode',explainMode);
-  const cls=document.getElementById('classroom');
-
-  if(explainMode){
-    // Mover o canvas para dentro da sala
-    cls.classList.add('open');
-    const inner=document.getElementById('class-arena-inner');
-    inner.appendChild(canvas);
-    resizeCanvas();
-    // Resetar passos
-    currentStep=0;
-    synapsePackets=[];
-    updateClassroomPanel();
-    updateClassroomNeural();
-  } else {
-    cls.classList.remove('open');
-    // Devolver canvas para arena-wrap
-    document.getElementById('arena-wrap').appendChild(canvas);
-    resizeCanvas();
-  }
-  updateUI();
-}
-
-// Navegação de passos
-document.getElementById('nav-next').addEventListener('click',()=>{
-  currentStep=Math.min(currentStep+1,CLASS_STEPS.length-1);updateClassroomPanel();});
-document.getElementById('nav-prev').addEventListener('click',()=>{
-  currentStep=Math.max(currentStep-1,0);updateClassroomPanel();});
-
-// Auto-avança passos conforme o estado do robô
-let stepAutoTimer=0;
-function autoAdvanceStep(){
-  if(!explainMode) return;
-  stepAutoTimer++;
-  if(stepAutoTimer<300) return; // ~5s por passo
-  stepAutoTimer=0;
-  if(lastNear && currentStep===0) currentStep=1;
-  else if(lastNear && currentStep===1) currentStep=2;
-  else if(lastNear && currentStep===2) currentStep=3;
-  else if(lastNear && currentStep===3) currentStep=4; // só avança se tiver alvo
-  // passo 4→0 só ao capturar (feito no collide)
-  updateClassroomPanel();
-}
-// badge de velocidade
-  if(explainMode){
-    document.getElementById('class-speed-badge').textContent='🐢 MODO LENTO — 60% VELOCIDADE';
-  }
-
-['btnPlay','btnPlay2'].forEach(id=>document.getElementById(id).addEventListener('click',togglePause));
-['btnSpeed','btnSpeed2'].forEach(id=>document.getElementById(id).addEventListener('click',cycleSpeed));
-['btnReset','btnReset2'].forEach(id=>document.getElementById(id).addEventListener('click',reset));
-document.getElementById('btnTeacher').addEventListener('click',toggleTeacher);
-document.getElementById('btnMusic').addEventListener('click',toggleMusic);
-document.getElementById('clearLog').addEventListener('click',()=>document.getElementById('log').innerHTML='');
-document.getElementById('btnFS').addEventListener('click',()=>{
-  const el=document.documentElement,isFS=document.fullscreenElement||document.webkitFullscreenElement;
-  if(!isFS)(el.requestFullscreen||el.webkitRequestFullscreen).call(el).catch(()=>{});
-  else(document.exitFullscreen||document.webkitExitFullscreen).call(document).catch(()=>{});
-});
-document.addEventListener('fullscreenchange',()=>setTimeout(resizeCanvas,60));
-document.addEventListener('webkitfullscreenchange',()=>setTimeout(resizeCanvas,60));
-window.addEventListener('resize',()=>setTimeout(resizeCanvas,80));
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  LOOP REESCRITO (com auto-passo integrado)
-// ═══════════════════════════════════════════════════════════════════════════
-function mainLoop(){
-  if(!paused){
-    const baseSteps=explainMode?1:SPEEDS[speedIdx];
-    for(let i=0;i<baseSteps;i++){
-      if(tick%4===0) vision();
-      moveRobot();moveObjects();collide();
-    }
-    if(explainMode) autoAdvanceStep();
-    if(tick%3===0) updateUI();
-  }
-  draw();
-  requestAnimationFrame(mainLoop);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════════════════════════════
-resizeCanvas();
-reset();
-mainLoop();
-</script>
+<script type="module" src="./js/main.js"></script>
 </body>
 </html>
