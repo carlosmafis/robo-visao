@@ -1,261 +1,358 @@
-// =============================================================================
-// UI v7 — painel principal + sala de aula (com Math Live integrado) + telemetria
-// =============================================================================
-import { CONFIG, RULES, CLASS_STEPS } from './config.js';
-import { state, adaptive, NN, telemetry, competitor } from './state.js';
-import { rgbToHsv, margin } from './neural.js';
-import { dist, fmt, drawChart, drawCompeteChart } from './render.js';
-import { updateMathLive } from './mathLive.js';
-import { updateTelemetry } from './telemetry.js';
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
+  <meta name="theme-color" content="#060b1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-const $ = id => document.getElementById(id);
+  <title>Combate Neural v7 — IA Adaptativa Premium</title>
+  <meta name="description" content="Simulador interativo de visão computacional e rede neural adaptativa: um robô aprende a classificar cores em HSV em tempo real, com sala de aula, modo competição e visão real via webcam." />
+  <meta name="author" content="Prof. Carlos Adriano" />
+  <link rel="canonical" href="https://carlosmafis.github.io/robo-visao/" />
 
-const els = {
-  pts: $('pts'), col: $('col'), fug: $('fug'), dmg: $('dmg'),
-  best: $('best'), learn: $('learn-count'),
-  w: [0, 1, 2, 3].map(i => $('w' + i)),
-  hval: $('hval'), sval: $('sval'), vval: $('vval'), dval: $('dval'),
-  nearNone: $('near-none'), nearInfo: $('near-info'),
-  scoresPanel: $('scores-panel'),
-  decBox: $('dec-box'), decName: $('dec-name'), decSub: $('dec-sub'), decMargin: $('dec-margin'),
-  confPct: $('conf-pct'), confBar: $('conf-bar'),
-  log: $('log'),
-  heatmap: $('weight-heatmap'),
-  ctd: $('class-tick-display'),
-  csNum: $('class-step-num'), csTitle: $('class-step-title'),
-  csDesc: $('class-step-desc'), csFormula: $('class-step-formula'),
-  cActList: $('class-act-list'),
-  cDecBox: $('class-dec-box'), cDecName: $('class-dec-name'), cDecRationale: $('class-dec-rationale'),
-  navPrev: $('nav-prev'), navNext: $('nav-next'),
-  // Compete
-  compScoreA: $('comp-score-a'), compScoreB: $('comp-score-b'),
-  compAccA: $('comp-acc-a'), compAccB: $('comp-acc-b'),
-  compHitsA: $('comp-hits-a'), compHitsB: $('comp-hits-b'),
-};
+  <meta property="og:title" content="Combate Neural v7 — Premium Edition" />
+  <meta property="og:description" content="4 modos: Treino, Sala de Aula, Competição (A vs B) e Visão Real (webcam) com perceptron multi-classe + softmax + Hebbian." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="pt_BR" />
 
-export function addLog(msg, color) {
-  const log = els.log; if (!log) return;
-  const div = document.createElement('div');
-  div.className = 'log-entry';
-  const t = document.createElement('span'); t.className = 'log-time'; t.textContent = fmt(state.tick);
-  const m = document.createElement('span'); m.className = 'log-msg'; m.textContent = msg;
-  m.style.color = color || 'var(--neon)';
-  div.appendChild(t); div.appendChild(m);
-  log.insertBefore(div, log.firstChild);
-  while (log.children.length > CONFIG.MAX_LOG_ENTRIES) log.removeChild(log.lastChild);
-}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" />
 
-// ── Heatmap ──
-function colorForWeight(w) {
-  const t = Math.max(-1, Math.min(1, w));
-  if (t >= 0) return `rgba(0,255,163,${.15 + t * .85})`;
-  return `rgba(255,59,111,${.15 + (-t) * .85})`;
-}
-let heatmapBuilt = false;
-function ensureHeatmap() {
-  if (heatmapBuilt || !els.heatmap) return;
-  els.heatmap.innerHTML = '';
-  els.heatmap.appendChild(makeCell('hm-row-lbl', '·'));
-  ['H', 'S', 'V', 'D'].forEach(l => els.heatmap.appendChild(makeCell('hm-row-lbl', l)));
-  RULES.forEach((rule, i) => {
-    const lbl = document.createElement('div');
-    lbl.className = 'hm-row-lbl';
-    const dot = document.createElement('span');
-    dot.className = 'dot'; dot.style.background = rule.hex; dot.style.boxShadow = `0 0 6px ${rule.hex}`;
-    lbl.appendChild(dot);
-    const txt = document.createElement('span'); txt.textContent = rule.name.slice(0, 4);
-    lbl.appendChild(txt);
-    els.heatmap.appendChild(lbl);
-    for (let j = 0; j < 4; j++) {
-      const c = document.createElement('div');
-      c.className = 'hm-cell';
-      c.id = `hm-${i}-${j}`;
-      els.heatmap.appendChild(c);
-    }
-  });
-  heatmapBuilt = true;
-}
-function makeCell(cls, text) { const d = document.createElement('div'); d.className = cls; d.textContent = text; return d; }
-function updateHeatmap() {
-  if (!els.heatmap) return;
-  ensureHeatmap();
-  RULES.forEach((_, i) => {
-    for (let j = 0; j < 4; j++) {
-      const cell = $(`hm-${i}-${j}`);
-      if (!cell) continue;
-      const w = NN.W[i][j];
-      cell.style.background = colorForWeight(w);
-      cell.textContent = w.toFixed(1);
-    }
-  });
-}
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" href="./assets/logo.png" />
+  <link rel="apple-touch-icon" href="./assets/logo.png" />
 
-// ── Painel classroom (decisão + ativações) ──
-function updateClassroomPanel() {
-  if (state.mode !== 'class') return;
-  if (els.ctd) els.ctd.textContent = 'T: ' + fmt(state.tick) + ' · 🐢 ' + Math.round(CONFIG.TEACHER_SPEED_FACTOR * 100) + '%';
-  const step = CLASS_STEPS[state.currentStep];
-  if (els.csNum) {
-    els.csNum.textContent = step.num;
-    els.csTitle.textContent = step.title;
-    els.csDesc.textContent = step.desc;
-    els.csFormula.textContent = step.formula;
-    els.navPrev.disabled = state.currentStep === 0;
-    els.navNext.disabled = state.currentStep === CLASS_STEPS.length - 1;
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"LearningResource",
+    "name":"Combate Neural v7 — Premium",
+    "description":"Simulação interativa de rede neural perceptron com aprendizado Hebbian, classificação HSV, modo competição e visão real via webcam.",
+    "educationalLevel":"Ensino Médio / Técnico / Graduação",
+    "learningResourceType":"Simulação interativa",
+    "inLanguage":"pt-BR",
+    "author":{"@type":"Person","name":"Prof. Carlos Adriano"}
   }
+  </script>
 
-  if (!state.lastNear) {
-    ['h', 's', 'v', 'd'].forEach(k => {
-      const el = $('chsv-' + k); if (el) el.classList.remove('lit');
-      const v = $('chsv-' + k + 'v'); if (v) v.textContent = '—';
-    });
-    if (els.cActList) els.cActList.innerHTML = '<div style="font-size:9px;color:var(--ink-mute)">Aguardando alvo no raio de detecção...</div>';
-    if (els.cDecName) {
-      els.cDecName.textContent = '🔍 EXPLORANDO';
-      els.cDecRationale.textContent = `Nenhum alvo detectado.\nRaio de detecção: ${CONFIG.DETECT_R}px`;
-      els.cDecBox.style.background = 'rgba(0,255,163,.04)';
-    }
-    return;
-  }
-  const rr = parseInt(state.lastNear.rule.hex.slice(1, 3), 16);
-  const gg = parseInt(state.lastNear.rule.hex.slice(3, 5), 16);
-  const bb = parseInt(state.lastNear.rule.hex.slice(5, 7), 16);
-  const { h, s, v } = rgbToHsv(rr, gg, bb);
-  const d = Math.round(dist(state.robot, state.lastNear));
-  const set = (id, t) => { const el = $(id); if (el) el.textContent = t; };
-  set('chsv-hv', Math.round(h) + '°');
-  set('chsv-sv', Math.round(s * 100) + '%');
-  set('chsv-vv', Math.round(v * 100) + '%');
-  set('chsv-dv', d + 'px');
-  ['h', 's', 'v', 'd'].forEach(k => { const el = $('chsv-' + k); if (el) el.classList.add('lit'); });
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
 
-  if (els.cActList) {
-    els.cActList.innerHTML = '';
-    RULES.forEach((r, i) => {
-      const sc = Math.round((state.lastScores[i] || 0) * 100);
-      const row = document.createElement('div');
-      row.className = 'class-act-row';
-      row.innerHTML = `
-        <div class="class-act-dot" style="background:${r.hex};color:${r.hex}"></div>
-        <div class="class-act-name">${r.name}</div>
-        <div class="class-act-bar-bg"><div class="class-act-bar" style="width:${sc}%;background:${r.hex};color:${r.hex}"></div></div>
-        <div class="class-act-pct" style="color:${r.hex}">${sc}%</div>`;
-      els.cActList.appendChild(row);
-    });
-  }
-  const r = state.lastNear.rule;
-  if (els.cDecName) {
-    els.cDecName.textContent = (r.flee ? '⚠ FUGIR DE ' : '✓ CAPTURAR ') + r.name;
-    els.cDecRationale.textContent =
-      `Cor detectada: ${r.name} (H=${Math.round(h)}°)\n` +
-      `Regra: ${r.flee ? 'cor perigosa → fugir' : 'cor valiosa → perseguir'}\n` +
-      `Ação: ${r.action} · ${r.pts > 0 ? '+' : ''}${r.pts} pts`;
-    els.cDecBox.style.background = r.flee ? 'rgba(255,59,111,.1)' : 'rgba(0,255,163,.08)';
-    els.cDecBox.style.borderColor = r.flee ? 'rgba(255,59,111,.5)' : 'rgba(0,255,163,.35)';
-    els.cDecName.style.color = r.flee ? '#ff3b6f' : '#00ffa3';
-  }
-}
+<body>
+<a href="#main-area" class="skip-link">Pular para a arena</a>
 
-function updateCompetePanel() {
-  if (state.mode !== 'compete') return;
-  if (els.compScoreA) els.compScoreA.textContent = state.score;
-  if (els.compScoreB) els.compScoreB.textContent = competitor.score;
-  const accA = telemetry.total > 0 ? Math.round(telemetry.hits / telemetry.total * 100) : 0;
-  const accB = competitor.total > 0 ? Math.round(competitor.hits / competitor.total * 100) : 0;
-  if (els.compAccA) els.compAccA.textContent = accA + '%';
-  if (els.compAccB) els.compAccB.textContent = accB + '%';
-  if (els.compHitsA) els.compHitsA.textContent = `${telemetry.hits}/${telemetry.total}`;
-  if (els.compHitsB) els.compHitsB.textContent = `${competitor.hits}/${competitor.total}`;
-  drawCompeteChart();
-}
+<div id="root">
 
-export function updateUI() {
-  if (!els.pts) return;
-  els.pts.textContent = state.score;
-  els.col.textContent = state.collected;
-  els.fug.textContent = state.fled_c;
-  els.dmg.textContent = state.dmg;
-  els.learn.textContent = adaptive.learnCount;
-  if (state.score > state.best) {
-    state.best = state.score;
-    localStorage.setItem(CONFIG.RECORD_KEY, String(state.best));
-  }
-  els.best.textContent = state.best;
-  adaptive.weights.forEach((w, i) => { if (els.w[i]) els.w[i].textContent = w.toFixed(2); });
+  <!-- ════════ TOPBAR ════════ -->
+  <header id="topbar" role="banner">
+    <div id="topbar-left">
+      <button id="sidebar-toggle" class="icon-btn" aria-label="Recolher menu lateral" type="button">
+        <span aria-hidden="true">☰</span>
+      </button>
+      <img src="./assets/logo.png" alt="Combate Neural" id="brand-logo" />
+      <h1 class="sr-only">COMBATE NEURAL</h1>
+      <span id="version-badge">v7.1</span>
+      <span id="mode-title" class="mode-title">Arena de Treino</span>
+    </div>
+    <nav id="topbar-right" aria-label="Controles">
+      <button class="icon-btn" id="btnPlay" type="button"><span aria-hidden="true">⏸</span> PAUSAR</button>
+      <button class="icon-btn" id="btnSpeed" type="button"><span aria-hidden="true">⚡</span> NORMAL</button>
+      <button class="icon-btn" id="btnReset" type="button"><span aria-hidden="true">↺</span> RESET</button>
+      <button class="icon-btn" id="btnMusic" type="button"><span aria-hidden="true">🎵</span> MÚSICA</button>
+      <button class="icon-btn" id="btnFS" type="button"><span aria-hidden="true">⛶</span></button>
+    </nav>
+  </header>
 
-  if (state.lastNear && els.nearInfo) {
-    const rr = parseInt(state.lastNear.rule.hex.slice(1, 3), 16);
-    const gg = parseInt(state.lastNear.rule.hex.slice(3, 5), 16);
-    const bb = parseInt(state.lastNear.rule.hex.slice(5, 7), 16);
-    const { h, s, v } = rgbToHsv(rr, gg, bb);
-    els.nearNone.style.display = 'none';
-    els.nearInfo.hidden = false;
-    els.hval.textContent = Math.round(h);
-    els.sval.textContent = Math.round(s * 100);
-    els.vval.textContent = Math.round(v * 100);
-    els.dval.textContent = Math.round(dist(state.robot, state.lastNear));
-  } else if (els.nearNone) {
-    els.nearNone.style.display = 'block';
-    if (els.nearInfo) els.nearInfo.hidden = true;
-  }
+  <div id="layout">
 
-  if (els.scoresPanel) {
-    els.scoresPanel.innerHTML = '';
-    RULES.forEach((c, i) => {
-      const pct = Math.round((state.lastScores[i] || 0) * 100);
-      const g = document.createElement('div');
-      g.className = 'bar-group';
-      g.innerHTML = `
-        <div class="bar-header">
-          <span class="bar-name"><span class="bar-dot" style="background:${c.hex}"></span>${c.name}</span>
-          <span class="bar-pct">${pct}%</span>
+    <!-- ════════ SIDEBAR ════════ -->
+    <aside id="sidebar" aria-label="Menu de modos">
+      <ul class="sb-list" role="menu">
+        <li class="sb-item active" data-mode="train" role="menuitem" tabindex="0">
+          <span class="sb-icon">🤖</span>
+          <span class="sb-label">Treino</span>
+          <span class="sb-key">1</span>
+        </li>
+        <li class="sb-item" data-mode="class" role="menuitem" tabindex="0">
+          <span class="sb-icon">🎓</span>
+          <span class="sb-label">Sala de Aula</span>
+          <span class="sb-key">2</span>
+        </li>
+        <li class="sb-item" data-mode="compete" role="menuitem" tabindex="0">
+          <span class="sb-icon">⚔️</span>
+          <span class="sb-label">Competição</span>
+          <span class="sb-key">3</span>
+        </li>
+        <li class="sb-item" data-mode="vision" role="menuitem" tabindex="0">
+          <span class="sb-icon">📷</span>
+          <span class="sb-label">Visão Real</span>
+          <span class="sb-key">4</span>
+        </li>
+      </ul>
+      <div class="sb-footer">
+        <div class="sb-version">PROF. CARLOS ADRIANO</div>
+        <div class="sb-tag">PERCEPTRON · HEBBIAN · SOFTMAX</div>
+      </div>
+    </aside>
+
+    <!-- ════════ MAIN AREA ════════ -->
+    <main id="main-area">
+
+      <!-- ── VIEW: TREINO ── -->
+      <section class="view view-train" data-view="train">
+        <div id="arena-wrap" aria-label="Arena de simulação">
+          <canvas id="arena" aria-label="Simulação ao vivo"></canvas>
         </div>
-        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${c.hex};box-shadow:0 0 5px ${c.hex}"></div></div>`;
-      els.scoresPanel.appendChild(g);
-    });
-  }
 
-  if (state.robot?.target && els.decName) {
-    const r = state.robot.target.rule;
-    const probs = state.lastScores;
-    const bi = probs.reduce((iMax, v, i, a) => v > a[iMax] ? i : iMax, 0);
-    const conf = Math.round((probs[bi] || 0) * 100);
-    const m = Math.round(margin(probs) * 100);
-    const second = probs.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v)[1];
-    els.decName.textContent = (r.flee ? '⚠ FUGIR DE ' : 'TARGET: ') + r.name;
-    els.decSub.textContent = `${r.action} · ${r.pts > 0 ? '+' : ''}${r.pts} pts`;
-    els.decMargin.textContent = second
-      ? `2ª: ${RULES[second.i].name} ${Math.round(second.v * 100)}% · margem ${m}%` : '';
-    els.decBox.style.background = r.flee ? 'rgba(255,59,111,.08)' : 'rgba(0,255,163,.06)';
-    els.decBox.style.borderColor = r.flee ? 'rgba(255,59,111,.4)' : 'rgba(0,255,163,.3)';
-    els.confPct.textContent = conf + '%';
-    els.confBar.style.width = conf + '%';
-    els.confBar.style.background = r.flee ? '#ff3b6f' : '#00ffa3';
-  } else if (els.decName) {
-    els.decName.textContent = 'ESCANEANDO...';
-    els.decSub.textContent = 'Aguardando detecção';
-    els.decMargin.textContent = '';
-    els.decBox.style.background = 'rgba(0,255,163,.04)';
-    els.decBox.style.borderColor = 'rgba(0,255,163,.18)';
-    els.confPct.textContent = '—';
-    els.confBar.style.width = '0%';
-  }
-  updateHeatmap();
-  drawChart();
-  updateTelemetry();
-  if (state.mode === 'class') {
-    updateClassroomPanel();
-    updateMathLive();
-  }
-  if (state.mode === 'compete') updateCompetePanel();
-}
+        <aside id="panel" aria-label="Processador neural">
+          <div class="panel-header">
+            <div class="panel-title">PROCESSADOR NEURAL</div>
+            <div class="panel-badge"><span class="live-dot"></span>AO VIVO</div>
+          </div>
 
-let toastTimer = null;
-export function toast(msg) {
-  const t = $('toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
-}
+          <div class="stats-grid">
+            <div class="stat-cell"><div class="stat-lbl">Pontos</div><div class="stat-val" id="pts">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">Capturados</div><div class="stat-val" id="col">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">🏆 Recorde</div><div class="stat-val record" id="best">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">Escaparam</div><div class="stat-val" id="fug">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">Dano</div><div class="stat-val danger-val" id="dmg">0</div></div>
+            <div class="stat-cell"><div class="stat-lbl">Aprend.</div><div class="stat-val" id="learn-count" style="font-size:14px">0</div></div>
+          </div>
+
+          <!-- TELEMETRIA — novo -->
+          <div class="section">
+            <div class="sec-label">📈 ACURÁCIA DO MODELO</div>
+            <canvas id="telemetry-spark" aria-label="Sparkline de acurácia"></canvas>
+            <div id="telemetry-summary" class="telemetry-sum"></div>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">🎯 ACERTO POR COR</div>
+            <div id="per-class-bars"></div>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">PESOS ADAPTATIVOS</div>
+            <div id="weights-wrap">
+              <div class="weight-cell"><div class="weight-lbl">H</div><div class="weight-val" id="w0">1.00</div></div>
+              <div class="weight-cell"><div class="weight-lbl">S</div><div class="weight-val" id="w1">1.00</div></div>
+              <div class="weight-cell"><div class="weight-lbl">V</div><div class="weight-val" id="w2">1.00</div></div>
+              <div class="weight-cell"><div class="weight-lbl">D</div><div class="weight-val" id="w3">1.00</div></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">MATRIZ DE PESOS W (7×4)</div>
+            <div id="weight-heatmap" role="img"></div>
+            <div class="heatmap-legend"><span>−</span><span class="heatmap-bar"></span><span>+</span></div>
+          </div>
+
+          <div id="chart-wrap">
+            <div id="chart-label">EVOLUÇÃO DA PONTUAÇÃO</div>
+            <canvas id="chart"></canvas>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">ANÁLISE HSV</div>
+            <div id="near-none" class="none-msg">Nenhum alvo no alcance</div>
+            <div id="near-info" hidden>
+              <div class="hsv-row">
+                <div class="hsv-cell"><div class="hsv-lbl">H°</div><div class="hsv-val" id="hval">0</div></div>
+                <div class="hsv-cell"><div class="hsv-lbl">S%</div><div class="hsv-val" id="sval">0</div></div>
+                <div class="hsv-cell"><div class="hsv-lbl">V%</div><div class="hsv-val" id="vval">0</div></div>
+                <div class="hsv-cell"><div class="hsv-lbl">Dist</div><div class="hsv-val" id="dval">0</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">ATIVAÇÕES (softmax)</div>
+            <div id="scores-panel"></div>
+          </div>
+
+          <div class="section">
+            <div class="sec-label">DECISÃO</div>
+            <div class="decision-box" id="dec-box">
+              <div class="dec-name" id="dec-name">ESCANEANDO...</div>
+              <div class="dec-sub" id="dec-sub">Aguardando detecção</div>
+              <div class="dec-margin" id="dec-margin"></div>
+            </div>
+            <div class="conf-row"><span class="conf-label">CONFIANÇA</span><span class="conf-pct" id="conf-pct">—</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="conf-bar" style="width:0%;background:var(--neon)"></div></div>
+          </div>
+
+          <div class="log-header">
+            <span class="sec-label" style="margin:0">EVENTOS</span>
+            <button class="log-clear" id="clearLog" type="button">LIMPAR</button>
+          </div>
+          <div class="log-wrap" id="log" role="log" aria-live="polite"></div>
+        </aside>
+      </section>
+
+      <!-- ── VIEW: SALA DE AULA ── -->
+      <section class="view view-class" data-view="class" hidden>
+        <div id="class-banner">
+          <h2>🎓 SALA DE AULA — IA NEURAL</h2>
+          <span id="class-speed-badge">🐢 MODO LENTO ATIVO</span>
+        </div>
+        <div id="class-body">
+          <div id="class-arena-col">
+            <div id="class-arena-header">
+              <span>🤖 ARENA — VELOCIDADE REDUZIDA</span>
+              <span id="class-tick-display">T: 00:00</span>
+            </div>
+            <div id="class-arena-inner"></div>
+          </div>
+
+          <div id="class-right">
+            <div id="class-step-box">
+              <div id="class-step-num">PASSO 1 DE 5</div>
+              <div id="class-step-title">Aguardando alvo...</div>
+              <div id="class-step-desc">O robô está explorando o ambiente.</div>
+              <div id="class-step-formula"></div>
+            </div>
+
+            <!-- MATH LIVE — novo painel didático -->
+            <div class="section" id="math-live-section">
+              <div class="sec-label">🧮 MATEMÁTICA AO VIVO</div>
+              <div id="math-live"></div>
+            </div>
+
+            <div id="class-hsv-wrap">
+              <div class="sec-label" style="margin-bottom:8px">ANÁLISE HSV DO ALVO</div>
+              <div class="class-hsv-row">
+                <div class="class-hsv-cell" id="chsv-h"><div class="class-hsv-lbl">H</div><div class="class-hsv-val" id="chsv-hv">—</div></div>
+                <div class="class-hsv-cell" id="chsv-s"><div class="class-hsv-lbl">S</div><div class="class-hsv-val" id="chsv-sv">—</div></div>
+                <div class="class-hsv-cell" id="chsv-v"><div class="class-hsv-lbl">V</div><div class="class-hsv-val" id="chsv-vv">—</div></div>
+                <div class="class-hsv-cell" id="chsv-d"><div class="class-hsv-lbl">D</div><div class="class-hsv-val" id="chsv-dv">—</div></div>
+              </div>
+            </div>
+
+            <div id="class-activations">
+              <div class="sec-label" style="margin-bottom:8px">ATIVAÇÕES — SOFTMAX</div>
+              <div id="class-act-list"></div>
+            </div>
+
+            <div id="class-decision">
+              <div class="sec-label" style="margin-bottom:8px">DECISÃO FINAL</div>
+              <div id="class-dec-box">
+                <div id="class-dec-name">—</div>
+                <div id="class-dec-rationale">Aguardando análise...</div>
+              </div>
+            </div>
+
+            <div id="class-footer">
+              <span>💡 ← → para navegar · Espaço pausa</span>
+              <div id="class-step-nav">
+                <button class="nav-btn" id="nav-prev" type="button">◀ ANTERIOR</button>
+                <button class="nav-btn" id="nav-next" type="button">PRÓXIMO ▶</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VIEW: COMPETIÇÃO ── -->
+      <section class="view view-compete" data-view="compete" hidden>
+        <div class="compete-banner">
+          <h2>⚔️ COMPETIÇÃO — ROBÔ A vs ROBÔ B</h2>
+          <button class="icon-btn" id="btn-comp-reset" type="button">↺ REINICIAR DUELO</button>
+        </div>
+        <div id="compete-body">
+          <div id="compete-arena-col">
+            <div id="compete-arena-inner"></div>
+          </div>
+          <aside id="compete-panel">
+            <div class="comp-card comp-a">
+              <div class="comp-card-head">
+                <span class="comp-dot" style="background:#00ffa3;box-shadow:0 0 12px #00ffa3"></span>
+                <span>ROBÔ A · η=0.05 (cauteloso)</span>
+              </div>
+              <div class="comp-stats">
+                <div><div class="comp-lbl">Pontos</div><div class="comp-val" id="comp-score-a">0</div></div>
+                <div><div class="comp-lbl">Acurácia</div><div class="comp-val" id="comp-acc-a">0%</div></div>
+                <div><div class="comp-lbl">Acertos</div><div class="comp-val" id="comp-hits-a">0/0</div></div>
+              </div>
+            </div>
+            <div class="comp-card comp-b">
+              <div class="comp-card-head">
+                <span class="comp-dot" style="background:#ffaa3a;box-shadow:0 0 12px #ffaa3a"></span>
+                <span>ROBÔ B · η=0.12 (agressivo)</span>
+              </div>
+              <div class="comp-stats">
+                <div><div class="comp-lbl">Pontos</div><div class="comp-val" id="comp-score-b">0</div></div>
+                <div><div class="comp-lbl">Acurácia</div><div class="comp-val" id="comp-acc-b">0%</div></div>
+                <div><div class="comp-lbl">Acertos</div><div class="comp-val" id="comp-hits-b">0/0</div></div>
+              </div>
+            </div>
+            <div class="comp-chart-wrap">
+              <div class="sec-label">📈 CURVA DE APRENDIZADO (janela móvel)</div>
+              <canvas id="compete-chart"></canvas>
+              <div class="comp-legend">
+                <span><span class="lg-dot" style="background:#00ffa3"></span> A (η=0.05)</span>
+                <span><span class="lg-dot" style="background:#ffaa3a"></span> B (η=0.12)</span>
+              </div>
+            </div>
+            <div class="comp-explain">
+              <strong>🧪 Experimento:</strong> dois robôs com a mesma arquitetura, mas <em>taxas de aprendizado</em> diferentes. O B aprende mais rápido — mas pode oscilar mais. Compare as curvas.
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ── VIEW: VISÃO REAL (WEBCAM) ── -->
+      <section class="view view-vision" data-view="vision" hidden>
+        <div class="vision-banner">
+          <h2>📷 VISÃO REAL — Webcam → Perceptron</h2>
+          <div class="vision-controls">
+            <button class="icon-btn" id="btn-vision-import" type="button">🧠 IMPORTAR PESOS DO TREINO</button>
+            <button class="icon-btn" id="btn-vision-save" type="button">💾 SALVAR SNAPSHOT</button>
+            <button class="icon-btn primary-btn" id="btn-vision-start" type="button">▶ INICIAR CÂMERA</button>
+          </div>
+        </div>
+        <div id="vision-body">
+          <div class="vision-cam-wrap">
+            <video id="vision-video" autoplay muted playsinline aria-label="Vídeo da webcam"></video>
+            <div class="vision-crosshair" aria-hidden="true">
+              <div class="vc-box"></div>
+              <div class="vc-label">aponte uma cor aqui</div>
+            </div>
+          </div>
+          <aside class="vision-panel">
+            <div class="vision-status-bar">
+              <span id="vision-status">⚪ Aguardando início da câmera</span>
+            </div>
+            <div class="vision-readout">
+              <div id="vision-swatch" class="vision-swatch" aria-label="Cor capturada"></div>
+              <div class="vision-info">
+                <div class="vi-row"><span class="vi-lbl">HEX</span><span class="vi-val" id="vision-hex">—</span></div>
+                <div class="vi-row"><span class="vi-lbl">RGB</span><span class="vi-val" id="vision-rgb">—</span></div>
+                <div class="vi-row"><span class="vi-lbl">HSV</span><span class="vi-val" id="vision-hsv">—</span></div>
+              </div>
+            </div>
+            <div class="vision-decision-box" id="vision-decision">
+              <span class="vd-idle">⏳ Inicie a câmera para classificar</span>
+            </div>
+            <div class="section">
+              <div class="sec-label">PROBABILIDADES POR CLASSE</div>
+              <div id="vision-probs"></div>
+            </div>
+            <div class="vision-hint">
+              💡 <strong>Dica:</strong> primeiro treine o robô no modo <em>Treino</em>, depois clique em <strong>Importar pesos</strong> aqui. A rede neural vai usar o que aprendeu nas cores sintéticas para classificar cores reais!
+            </div>
+          </aside>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
