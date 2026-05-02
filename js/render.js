@@ -3,7 +3,7 @@
 // alvos com halo dinâmico, partículas refinadas, suporta robô B (competição)
 // =============================================================================
 import { CONFIG, RULES } from './config.js';
-import { state, adaptive, NN, competitor } from './state.js';
+import { state, adaptive, NN, NN_B, competitor, telemetry } from './state.js';
 import { rgbToHsv } from './neural.js';
 
 const { ROBOT_R, OBJ_R, DETECT_R } = CONFIG;
@@ -433,13 +433,13 @@ export function draw() {
     tick: state.tick,
   });
 
-  // Robô B
+  // Robô B (íris baseada na rede B)
   if (competitor.enabled && competitor.robot) {
     drawPremiumRobot(competitor.robot.x, competitor.robot.y, {
       state: competitor.robot.state,
-      irisHex: predictedHex(NN.lastProbs), // fallback
-      bobble: state.robotBobble * 1.2,
-      tick: state.tick,
+      irisHex: predictedHex(NN_B.lastProbs),
+      bobble: state.robotBobble * 1.2 + 1.5,
+      tick: state.tick + 30,
       isB: true,
     });
   }
@@ -525,22 +525,38 @@ export function drawCompeteChart() {
   g.beginPath(); g.moveTo(0, h * 0.5); g.lineTo(w, h * 0.5); g.stroke();
   g.setLineDash([]);
 
-  // Importação tardia para evitar ciclo
-  import('./state.js').then(({ telemetry, competitor }) => {
-    const drawSeries = (data, color) => {
-      if (data.length < 2) return;
-      g.beginPath();
-      data.forEach((v, i) => {
-        const x = (i / (data.length - 1)) * w;
-        const y = h - v * (h - 4) - 2;
-        i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
-      });
-      g.strokeStyle = color; g.lineWidth = 1.8;
-      g.shadowColor = color; g.shadowBlur = 6; g.stroke(); g.shadowBlur = 0;
-    };
-    drawSeries(telemetry.accuracyHistory, '#00ffa3');
-    drawSeries(competitor.accuracyHistory, '#ffaa3a');
-  });
+  // Séries (telemetry da rede A em verde, competitor B em laranja)
+  const drawSeries = (data, color) => {
+    if (!data || data.length < 2) return;
+    g.beginPath();
+    data.forEach((v, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - v * (h - 4) - 2;
+      i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+    });
+    g.strokeStyle = color; g.lineWidth = 1.8;
+    g.shadowColor = color; g.shadowBlur = 6; g.stroke(); g.shadowBlur = 0;
+  };
+  drawSeries(telemetry.accuracyHistory, '#00ffa3');
+  drawSeries(competitor.accuracyHistory, '#ffaa3a');
+
+  // Legenda + valores atuais
+  g.font = 'bold 10px "Orbitron", sans-serif';
+  g.textBaseline = 'top';
+  const accA = telemetry.recent.length
+    ? Math.round((telemetry.recent.reduce((a, b) => a + b, 0) / telemetry.recent.length) * 100) : 0;
+  const accB = competitor.recent.length
+    ? Math.round((competitor.recent.reduce((a, b) => a + b, 0) / competitor.recent.length) * 100) : 0;
+  g.fillStyle = '#00ffa3'; g.textAlign = 'left';
+  g.fillText(`● A  ${accA}%`, 8, 6);
+  g.fillStyle = '#ffaa3a'; g.textAlign = 'right';
+  g.fillText(`B  ${accB}% ●`, w - 8, 6);
+
+  // Eixo 50%
+  g.fillStyle = 'rgba(255,216,58,.5)';
+  g.font = '8px "Share Tech Mono"';
+  g.textAlign = 'left';
+  g.fillText('50%', 4, h * 0.5 - 4);
 }
 
 export { fmt, dist, RULES };

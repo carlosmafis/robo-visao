@@ -5,6 +5,8 @@
 import { CONFIG, RULES } from './config.js';
 import { state, NN, NN_B, competitor, recordCompetitorOutcome, resetCompetitor } from './state.js';
 import { rgbToHsv, buildInput } from './neural.js';
+import { burst, addFloat } from './render.js';
+import { playBeep } from './audio.js';
 
 const { ROBOT_R, OBJ_R, DETECT_R } = CONFIG;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -107,6 +109,19 @@ export function checkCompetitorCollisions() {
       const correct = predicted === truth;
       learnB(truth, correct ? +1 : -1, x);
       recordCompetitorOutcome(correct);
+
+      // ── Efeitos premium do Robô B (laranja distintivo) ──
+      const isFlee = o.rule.flee;
+      // Glitch leve no arena (B usa tom dourado/laranja para diferenciar de A)
+      state.glitchEffect = Math.max(state.glitchEffect, 0.32);
+      state.glitchColor = isFlee ? '255,80,40' : '255,170,58';
+      // Partículas
+      burst(o.x, o.y, isFlee ? 'rgba(255,90,40,' : 'rgba(255,170,58,', 18);
+      // Floating points (em laranja para identificar o agente)
+      addFloat(o.x, o.y - 22, (o.rule.pts > 0 ? '+' : '') + o.rule.pts + ' [B]', isFlee ? '#ff6428' : '#ffaa3a');
+      // Beep mais grave / alternativo
+      playBeep(isFlee ? 130 : 540, 'triangle', 110);
+
       // remove objeto (ele foi consumido por B)
       state.objects.splice(i, 1);
     }
