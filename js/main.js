@@ -10,6 +10,7 @@ import { startMusic, stopMusic, isMusicPlaying, resumeAudio } from './audio.js';
 
 const $ = id => document.getElementById(id);
 
+
 setLogCallback(addLog);
 
 // ── Botões ──
