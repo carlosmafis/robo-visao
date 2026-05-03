@@ -44,16 +44,43 @@ function rgbToHex(r, g, b) {
   return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
+function classifyByHue(h, s, v) {
+  // Centro de cada faixa de matiz (lida do RULES)
+  const centers = RULES.map(r => {
+    const ranges = r.hueRanges;
+    if (ranges.length > 1) return 0; // vermelho wrap
+    return (ranges[0][0] + ranges[0][1]) / 2;
+  });
+  // Distância circular em graus
+  const dists = centers.map(c => {
+    const d = Math.abs(h - c);
+    return Math.min(d, 360 - d);
+  });
+  // Softmax invertido (mais perto = maior prob)
+  const sigma = 25; // largura
+  const logits = dists.map(d => -(d * d) / (2 * sigma * sigma));
+  // Penaliza cores cinzas (baixa saturação): cai pra menor confiança geral
+  const satGain = Math.min(1, s / 0.25) * Math.min(1, v / 0.18);
+  const max = Math.max(...logits);
+  const exps = logits.map(z => Math.exp(z - max));
+  const sum = exps.reduce((a, b) => a + b, 0) || 1;
+  let probs = exps.map(e => e / sum);
+  // Mistura com uniforme se cor for cinza/escura
+  if (satGain < 1) {
+    const u = 1 / probs.length;
+    probs = probs.map(p => p * satGain + u * (1 - satGain));
+  }
+  const winnerIdx = probs.reduce((iMax, p, i, a) => p > a[iMax] ? i : iMax, 0);
+  return { probs, winnerIdx };
+}
+
 function loop() {
   if (!running) return;
   const rgb = getCenterColor();
   if (rgb) {
     const [r, g, b] = rgb;
     const hsv = rgbToHsv(r, g, b);
-    // Entrada para a rede: distância = 0 (objeto "na cara")
-    const x = [hsv.h / 360, hsv.s, hsv.v, 1];
-    const probs = forward(x);
-    const winnerIdx = probs.reduce((iMax, v, i, a) => v > a[iMax] ? i : iMax, 0);
+    const { probs, winnerIdx } = classifyByHue(hsv.h, hsv.s, hsv.v);
     lastFrame = { rgb, hsv, probs, winnerIdx };
     renderFrame();
   }

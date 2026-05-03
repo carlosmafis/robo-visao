@@ -32,7 +32,7 @@ export function buildMathLive() {
     </div>
     <div class="ml-section">
       <div class="ml-label">④ SOFTMAX → PROBABILIDADES  <span class="ml-eq">p_i = e^z_i / Σ e^z</span></div>
-      <div class="ml-z-row" id="ml-p"></div>
+      <div class="ml-p-list" id="ml-p"></div>
     </div>
     <div class="ml-section">
       <div class="ml-label">⑤ DECISÃO  <span class="ml-eq">argmax(p)</span></div>
