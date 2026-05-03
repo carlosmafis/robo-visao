@@ -49,19 +49,6 @@ body::after{content:'';position:fixed;left:0;right:0;height:60px;pointer-events:
   background:linear-gradient(135deg,rgba(6,11,26,.98),rgba(10,16,40,.95));
   border-bottom:1px solid var(--neon);box-shadow:0 0 28px rgba(0,255,163,.18)}
 #topbar-left{display:flex;align-items:center;gap:10px}
-#brand-logo {
-  height: 26px;
-  width: auto;
-  object-fit: contain;
-  margin-right: 6px;
-  filter: drop-shadow(0 0 6px #00ffa3);
-  transition: 0.2s;
-}
-
-#brand-logo:hover {
-  filter: drop-shadow(0 0 12px #00ffa3);
-  transform: scale(1.05);
-}
 #topbar h1{font-family:'Orbitron',sans-serif;font-size:var(--fz-sm);font-weight:900;color:var(--neon);
   animation:neon-pulse 3s ease-in-out infinite;letter-spacing:.18em;line-height:1}
 #version-badge{font-size:var(--fz-3xs);color:var(--neon2);letter-spacing:.1em;border:1px solid rgba(90,217,255,.4);
@@ -235,7 +222,8 @@ body::after{content:'';position:fixed;left:0;right:0;height:60px;pointer-events:
 .ml-W-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
 .ml-W-cell{background:var(--bg2);padding:4px;text-align:center;font-size:var(--fz-3xs);font-family:'Orbitron',sans-serif;font-weight:700;color:#04140d;transition:all .25s}
 .ml-W-cell.winner{outline:1.5px solid var(--neon);outline-offset:-2px;animation:blink 1s ease-in-out infinite}
-.ml-z-row{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.ml-z-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.ml-p-list{display:flex;flex-direction:column;gap:3px}
 .ml-z-cell{background:rgba(0,0,0,.4);border:1px solid;border-radius:var(--radius-s);padding:4px 2px;text-align:center}
 .ml-z-lbl{font-size:7px;font-family:'Orbitron',sans-serif;font-weight:700;letter-spacing:.05em}
 .ml-z-val{font-size:var(--fz-3xs);color:var(--ink);font-family:'Orbitron',sans-serif;margin-top:2px}
@@ -361,4 +349,21 @@ body::after{content:'';position:fixed;left:0;right:0;height:60px;pointer-events:
   .view-train{flex-direction:column}
   #arena-wrap{height:55vw;min-height:200px;flex:0 0 auto}
   #panel{width:100%;flex:1;border-left:none;border-top:1px solid var(--neon)}
+}
+
+/* ── Brand logo (v7.1) ── */
+#brand-logo{
+  height:34px;width:auto;display:block;
+  filter:drop-shadow(0 0 6px rgba(122,255,80,.35)) drop-shadow(0 0 14px rgba(0,255,163,.18));
+  image-rendering:auto;
+  transition:filter .25s ease,transform .25s ease;
+}
+#brand-logo:hover{
+  filter:drop-shadow(0 0 10px rgba(122,255,80,.65)) drop-shadow(0 0 22px rgba(0,255,163,.35));
+  transform:scale(1.04);
+}
+@media (max-width:640px){ #brand-logo{height:28px} }
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
 }
