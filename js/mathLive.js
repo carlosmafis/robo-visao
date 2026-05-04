@@ -109,17 +109,24 @@ export function updateMathLive() {
     zRow.appendChild(cell);
   });
 
-  // ④ softmax
+  // ④ softmax — barras com largura mínima visível para todas as classes
   pRow.innerHTML = '';
   const winIdx = has ? argmax(p) : -1;
   RULES.forEach((r, i) => {
-    const pct = Math.round((p[i] || 0) * 100);
+    const raw = (p[i] || 0) * 100;
+    const pct = Math.round(raw);
+    // Largura visual mínima de 6% para que TODAS as cores apareçam (mesmo as muito baixas)
+    const visW = has ? Math.max(6, raw) : 0;
     const cell = document.createElement('div');
     cell.className = 'ml-p-cell' + (i === winIdx ? ' winner' : '');
-    cell.style.borderColor = r.hex;
+    cell.style.borderColor = r.hex + 'aa';
+    // Tinge o fundo da célula com a cor da regra (sempre visível)
+    cell.style.background = `linear-gradient(90deg, ${r.hex}1f 0%, rgba(0,0,0,.35) 100%)`;
     cell.innerHTML = `
-      <div class="ml-p-name" style="color:${r.hex}">${r.name.slice(0, 4)}</div>
-      <div class="ml-p-bar-bg"><div class="ml-p-bar-fill" style="width:${pct}%;background:${r.hex};box-shadow:0 0 8px ${r.hex}"></div></div>
+      <div class="ml-p-name" style="color:${r.hex};text-shadow:0 0 6px ${r.hex}88">${r.name.slice(0, 4)}</div>
+      <div class="ml-p-bar-bg" style="background:${r.hex}1a">
+        <div class="ml-p-bar-fill" style="width:${visW}%;background:${r.hex};box-shadow:0 0 8px ${r.hex}"></div>
+      </div>
       <div class="ml-p-pct" style="color:${r.hex}">${pct}%</div>`;
     pRow.appendChild(cell);
   });

@@ -89,6 +89,24 @@ export function resetCompetitor() {
   NN_B.W = seedW(); NN_B.b = seedB(); biasedSeed(NN_B.W, NN_B.b);
 }
 
+// Reset COMPLETO da competição: zera tanto A quanto B (placar, telemetria, pesos)
+// para que o duelo comece em pé de igualdade.
+export function resetCompetitionAll() {
+  // Robô A: zera score visível e telemetria de aprendizado
+  state.score = 0;
+  state.collected = 0;
+  state.fled_c = 0;
+  state.dmg = 0;
+  state.scoreHistory.length = 0;
+  resetTelemetry();
+  // Reseed pesos do A para que ambos comecem do mesmo ponto-base aleatório
+  NN.W = seedW(); NN.b = seedB(); biasedSeed(NN.W, NN.b);
+  adaptive.weights = [1, 1, 1, 1];
+  adaptive.learnCount = 0;
+  // Robô B
+  resetCompetitor();
+}
+
 export function recordCompetitorOutcome(correct) {
   competitor.total++;
   if (correct) competitor.hits++;

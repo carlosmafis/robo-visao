@@ -2,7 +2,7 @@
 // MAIN v7 — orquestra sidebar + 4 modos + loop principal
 // =============================================================================
 import { CONFIG, CLASS_STEPS, MODES } from './config.js';
-import { state, saveWeightsToLocalStorage, competitor } from './state.js';
+import { state, saveWeightsToLocalStorage, competitor, resetCompetitionAll } from './state.js';
 import { canvas, draw, resizeCanvas, chartResize } from './render.js';
 import { reset, vision, moveRobot, moveObjects, collide, setLogCallback } from './sim.js';
 import { updateUI, addLog, toast } from './ui.js';
@@ -75,8 +75,15 @@ $('nav-prev')?.addEventListener('click', () => {
 
 // ── Wiring competição ──
 $('btn-comp-reset')?.addEventListener('click', () => {
+  resetCompetitionAll();
   spawnCompetitor();
-  toast('🔄 Competição reiniciada — Robô B aprende com η=' + CONFIG.COMPETITOR_LR);
+  // Recria objetos para arena limpa
+  reset();
+  // Garante competidor ativo após reset()
+  spawnCompetitor();
+  updateUI();
+  setTimeout(() => { resizeCanvas(); chartResize(); updateUI(); }, 60);
+  toast('🔄 Duelo reiniciado — Robô A (η=0.05) vs Robô B (η=' + CONFIG.COMPETITOR_LR + ')');
 });
 
 // ── Wiring webcam ──
@@ -108,7 +115,12 @@ initSidebar((mode) => {
   if (target && canvas.parentElement !== target) target.appendChild(canvas);
 
   // Habilitar / desabilitar competidor
-  if (mode === 'compete' && !competitor.enabled) spawnCompetitor();
+  if (mode === 'compete' && !competitor.enabled) {
+    // Entrar no modo: zera placar/telemetria de A e B para um duelo justo
+    resetCompetitionAll();
+    reset();
+    spawnCompetitor();
+  }
   if (mode !== 'compete' && competitor.enabled) despawnCompetitor();
 
   // Webcam
@@ -119,7 +131,10 @@ initSidebar((mode) => {
     const b = $('btn-vision-start'); if (b) b.textContent = '▶ INICIAR CÂMERA';
   }
 
+  // Dois ticks de resize: o canvas do gráfico só ganha tamanho após o
+  // browser aplicar o `hidden=false` na view recém-aberta.
   setTimeout(() => { resizeCanvas(); chartResize(); updateUI(); }, 60);
+  setTimeout(() => { resizeCanvas(); chartResize(); updateUI(); }, 240);
 });
 
 // ── Resize global ──

@@ -465,14 +465,19 @@ export function draw() {
 const chartCanvas = document.getElementById('chart');
 const chartCtx = chartCanvas ? chartCanvas.getContext('2d') : null;
 let chartW = 0, chartH = 0;
+// Estado do gráfico de competição (declarado aqui para que chartResize possa invalidá-lo)
+let cChartCtx = null, cW = 0, cH = 0;
 export function chartResize() {
-  if (!chartCanvas) return;
-  chartW = chartCanvas.offsetWidth || 270;
-  chartH = chartCanvas.offsetHeight || 50;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  chartCanvas.width = chartW * dpr;
-  chartCanvas.height = chartH * dpr;
-  chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (chartCanvas) {
+    chartW = chartCanvas.offsetWidth || 270;
+    chartH = chartCanvas.offsetHeight || 50;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    chartCanvas.width = chartW * dpr;
+    chartCanvas.height = chartH * dpr;
+    chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  // Invalida cache do gráfico de competição para que ele recalcule no próximo draw
+  cW = 0; cH = 0; cChartCtx = null;
 }
 export function drawChart() {
   if (!chartCtx) return;
@@ -505,7 +510,6 @@ export function drawChart() {
 
 // Sparkline para a tab Competição (acurácia A vs B)
 const compCanvas = () => document.getElementById('compete-chart');
-let cChartCtx = null, cW = 0, cH = 0;
 export function drawCompeteChart() {
   const c = compCanvas();
   if (!c) return;
@@ -543,6 +547,16 @@ export function drawCompeteChart() {
   };
   drawSeries(telemetry.accuracyHistory, '#00ffa3');
   drawSeries(competitor.accuracyHistory, '#ffaa3a');
+
+  // Placeholder quando ainda não há dados suficientes
+  const aN = telemetry.accuracyHistory?.length || 0;
+  const bN = competitor.accuracyHistory?.length || 0;
+  if (aN < 2 && bN < 2) {
+    g.fillStyle = 'rgba(154,217,192,.55)';
+    g.font = '10px "Share Tech Mono"';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('aguardando colisões para traçar a curva…', w / 2, h / 2 + 8);
+  }
 
   // Legenda + valores atuais
   g.font = 'bold 10px "Orbitron", sans-serif';
