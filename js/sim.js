@@ -58,7 +58,10 @@ export function vision() {
     const d = dist(state.robot, nearest);
     state.lastScores = forward(buildInput(nearest.rule.hex, d));
     state.robot.target = nearest;
-    state.robot.state = nearest.rule.flee ? 'flee' : 'chase';
+    // Usar predição da rede em vez de rule.flee hardcoded:
+    const predClass = argmax(state.lastScores);
+    const predRule = RULES[predClass];
+    state.robot.state = predRule.flee ? 'flee' : 'chase';
   } else {
     state.lastScores = [];
     state.robot.state = 'idle';
@@ -111,8 +114,13 @@ export function collide() {
       const predicted = argmax(probs);
       const truth = trueClass(o.rule.hex);
       const correct = predicted === truth;
-      const reward = correct ? +1 : -1;
-      learn(truth, reward, x);
+      
+      if (correct) {
+        learn(truth, +1, x);
+      } else {
+        learn(predicted, -1, x);  // punir classe errada
+        learn(truth,     +1, x);  // reforçar classe correta
+      }
       recordOutcome(truth, correct);
 
       state.glitchEffect = .4;
