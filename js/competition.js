@@ -4,7 +4,7 @@
 // =============================================================================
 import { CONFIG, RULES } from './config.js';
 import { state, NN, NN_B, competitor, recordCompetitorOutcome, resetCompetitor } from './state.js';
-import { rgbToHsv, buildInput } from './neural.js';
+import { rgbToHsv, buildInput, argmax } from './neural.js';
 import { burst, addFloat } from './render.js';
 import { playBeep } from './audio.js';
 
@@ -35,13 +35,24 @@ function trueClass(hex) {
   return 0;
 }
 
-function learnB(classIdx, reward, x) {
+// Aprendizado corrigido para Robô B (mesmo algoritmo do A)
+function learnB(predictedIdx, truthIdx, x) {
   const η = CONFIG.COMPETITOR_LR;
   const [lo, hi] = CONFIG.WEIGHT_CLAMP;
+
+  // Reforça sempre a classe correta
   for (let j = 0; j < 4; j++) {
-    NN_B.W[classIdx][j] = clamp(NN_B.W[classIdx][j] + η * reward * x[j], lo, hi);
+    NN_B.W[truthIdx][j] = clamp(NN_B.W[truthIdx][j] + η * x[j], lo, hi);
   }
-  NN_B.b[classIdx] = clamp(NN_B.b[classIdx] + η * reward * 0.5, lo, hi);
+  NN_B.b[truthIdx] = clamp(NN_B.b[truthIdx] + η * 0.5, lo, hi);
+
+  // Se errou, penaliza a classe predita incorretamente
+  if (predictedIdx !== truthIdx) {
+    for (let j = 0; j < 4; j++) {
+      NN_B.W[predictedIdx][j] = clamp(NN_B.W[predictedIdx][j] - η * x[j], lo, hi);
+    }
+    NN_B.b[predictedIdx] = clamp(NN_B.b[predictedIdx] - η * 0.5, lo, hi);
+  }
 }
 
 export function spawnCompetitor() {
@@ -62,7 +73,7 @@ export function stepCompetitor() {
   if (!competitor.enabled || !competitor.robot) return;
   const r = competitor.robot;
 
-  // Visão B
+  // Visão B com confiança (igual ao Robô A)
   let nearest = null, nd = Infinity;
   for (const o of state.objects) {
     const d = dist(r, o);
@@ -70,9 +81,18 @@ export function stepCompetitor() {
   }
   if (nearest) {
     const x = buildInput(nearest.rule.hex, nd);
-    forwardB(x);
+    const probs = forwardB(x);
+    const best = argmax(probs);
+    const sorted = probs.slice().sort((a, b) => b - a);
+    const confidence = sorted[0] - sorted[1];
+
+    const CONFIDENCE_THRESHOLD = 0.15;
+    if (confidence >= CONFIDENCE_THRESHOLD) {
+      r.state = RULES[best].flee ? 'flee' : 'chase';
+    } else {
+      r.state = nearest.rule.flee ? 'flee' : 'chase';
+    }
     r.target = nearest;
-    r.state = nearest.rule.flee ? 'flee' : 'chase';
   } else {
     r.target = null; r.state = 'idle';
   }
@@ -94,7 +114,6 @@ export function stepCompetitor() {
   r.bt++;
 }
 
-// Chamado pela sim quando B colide com objeto (gerenciado internamente aqui)
 export function checkCompetitorCollisions() {
   if (!competitor.enabled || !competitor.robot) return;
   const r = competitor.robot;
@@ -104,25 +123,21 @@ export function checkCompetitorCollisions() {
       competitor.score += o.rule.pts;
       const x = buildInput(o.rule.hex, 0);
       const probs = forwardB(x);
-      const predicted = probs.reduce((iMax, v, idx, arr) => v > arr[iMax] ? idx : iMax, 0);
+      const predicted = argmax(probs);
       const truth = trueClass(o.rule.hex);
       const correct = predicted === truth;
-      learnB(truth, correct ? +1 : -1, x);
+
+      // Aprendizado corrigido para B
+      learnB(predicted, truth, x);
       recordCompetitorOutcome(correct);
 
-      // ── Efeitos premium do Robô B (laranja distintivo) ──
       const isFlee = o.rule.flee;
-      // Glitch leve no arena (B usa tom dourado/laranja para diferenciar de A)
       state.glitchEffect = Math.max(state.glitchEffect, 0.32);
       state.glitchColor = isFlee ? '255,80,40' : '255,170,58';
-      // Partículas
       burst(o.x, o.y, isFlee ? 'rgba(255,90,40,' : 'rgba(255,170,58,', 18);
-      // Floating points (em laranja para identificar o agente)
       addFloat(o.x, o.y - 22, (o.rule.pts > 0 ? '+' : '') + o.rule.pts + ' [B]', isFlee ? '#ff6428' : '#ffaa3a');
-      // Beep mais grave / alternativo
       playBeep(isFlee ? 130 : 540, 'triangle', 110);
 
-      // remove objeto (ele foi consumido por B)
       state.objects.splice(i, 1);
     }
   }
