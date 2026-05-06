@@ -54,24 +54,40 @@ export function margin(probs) {
 }
 
 /**
- * Aprendizado Hebbian de classe (perceptron-like):
- *  ΔW[c][j] = η · reward · x[j]
- * Atualiza tanto a matriz W (rede real) quanto os pesos
- * adaptativos didáticos.
+ * Aprendizado Perceptron corrigido:
+ *
+ * Quando ACERTA  (predicted === truth):
+ *   ΔW[truth][j]     = +η · x[j]   → reforça a classe correta
+ *
+ * Quando ERRA    (predicted !== truth):
+ *   ΔW[predicted][j] = -η · x[j]   → penaliza a classe que errou
+ *   ΔW[truth][j]     = +η · x[j]   → reforça a classe correta
+ *
+ * Isso garante convergência: a classe verdadeira sempre cresce,
+ * e a classe errada é enfraquecida apenas quando comete erro.
  */
-export function learn(classIdx, reward, x) {
+export function learn(predictedIdx, truthIdx, x) {
   const η = CONFIG.LEARNING_RATE;
   const [lo, hi] = CONFIG.WEIGHT_CLAMP;
 
+  // Reforça sempre a classe correta
   for (let j = 0; j < 4; j++) {
-    NN.W[classIdx][j] = clamp(NN.W[classIdx][j] + η * reward * x[j], lo, hi);
+    NN.W[truthIdx][j] = clamp(NN.W[truthIdx][j] + η * x[j], lo, hi);
   }
-  NN.b[classIdx] = clamp(NN.b[classIdx] + η * reward * 0.5, lo, hi);
+  NN.b[truthIdx] = clamp(NN.b[truthIdx] + η * 0.5, lo, hi);
+
+  // Se errou, penaliza a classe predita incorretamente
+  if (predictedIdx !== truthIdx) {
+    for (let j = 0; j < 4; j++) {
+      NN.W[predictedIdx][j] = clamp(NN.W[predictedIdx][j] - η * x[j], lo, hi);
+    }
+    NN.b[predictedIdx] = clamp(NN.b[predictedIdx] - η * 0.5, lo, hi);
+  }
 
   // Pesos adaptativos didáticos (ganho global por dimensão de entrada)
   const [aLo, aHi] = CONFIG.ADAPT_CLAMP;
   for (let j = 0; j < adaptive.weights.length; j++) {
-    adaptive.weights[j] = clamp(adaptive.weights[j] + η * reward * x[j] * 0.3, aLo, aHi);
+    adaptive.weights[j] = clamp(adaptive.weights[j] + η * x[j] * 0.3, aLo, aHi);
   }
   adaptive.learnCount++;
 }
