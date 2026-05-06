@@ -8,16 +8,14 @@ const seedB = () => RULES.map(() => 0);
 
 function biasedSeed(W, b) {
   RULES.forEach((rule, i) => {
-    const ranges = rule.hueRanges;
-    const center = ranges[0][0] === 0 && ranges.length > 1
-      ? 5
-      : (ranges[0][0] + ranges[0][1]) / 2;
-    const huePref = center / 360;
-    W[i][0] = 0.3 + (Math.random() - 0.5) * 0.2;
-    W[i][1] = 0.4 + (Math.random() - 0.5) * 0.2;
-    W[i][2] = 0.3 + (Math.random() - 0.5) * 0.2;
-    W[i][3] = 0.2 + (Math.random() - 0.5) * 0.2;
-    b[i] = -0.3 - Math.abs(huePref - 0.5) * 0.5;
+    // Inicialização neutra: pequenos valores aleatórios sem favorecimento por posição de hue.
+    // O peso H (W[i][0]) recebia antes um viés que favorecia Ciano (hue=180°, centro do espectro),
+    // fazendo-o dominar o softmax desde o início. Agora todos partem do mesmo patamar.
+    W[i][0] = 0.25 + (Math.random() - 0.5) * 0.2;  // H — viés neutro uniforme
+    W[i][1] = 0.20 + (Math.random() - 0.5) * 0.2;  // S
+    W[i][2] = 0.15 + (Math.random() - 0.5) * 0.2;  // V
+    W[i][3] = 0.10 + (Math.random() - 0.5) * 0.2;  // proximidade
+    b[i]    = -0.1 + (Math.random() - 0.5) * 0.1;  // bias leve negativo uniforme
   });
 }
 
@@ -72,7 +70,6 @@ biasedSeed(NN_B.W, NN_B.b);
 
 export const competitor = {
   enabled: false,
-  // Robô B vive no mesmo arena, posição independente
   robot: null,
   score: 0, hits: 0, total: 0,
   accuracyHistory: [],
@@ -85,25 +82,19 @@ export function resetCompetitor() {
   competitor.total = 0;
   competitor.accuracyHistory.length = 0;
   competitor.recent.length = 0;
-  // Reseed
   NN_B.W = seedW(); NN_B.b = seedB(); biasedSeed(NN_B.W, NN_B.b);
 }
 
-// Reset COMPLETO da competição: zera tanto A quanto B (placar, telemetria, pesos)
-// para que o duelo comece em pé de igualdade.
 export function resetCompetitionAll() {
-  // Robô A: zera score visível e telemetria de aprendizado
   state.score = 0;
   state.collected = 0;
   state.fled_c = 0;
   state.dmg = 0;
   state.scoreHistory.length = 0;
   resetTelemetry();
-  // Reseed pesos do A para que ambos comecem do mesmo ponto-base aleatório
   NN.W = seedW(); NN.b = seedB(); biasedSeed(NN.W, NN.b);
   adaptive.weights = [1, 1, 1, 1];
   adaptive.learnCount = 0;
-  // Robô B
   resetCompetitor();
 }
 
@@ -131,7 +122,7 @@ export const state = {
   particles: [], floatLabels: [],
   speedIdx: 0,
   paused: false,
-  mode: 'train',                 // train | class | compete | vision
+  mode: 'train',
   currentStep: 0,
   synapsePackets: [],
   teacherPhase: 0,
@@ -139,7 +130,6 @@ export const state = {
   best: parseInt(localStorage.getItem(CONFIG.RECORD_KEY) || '0', 10),
 };
 
-// Helpers para snapshot/restore de pesos (export para webcam)
 export function snapshotWeights() {
   return {
     W: NN.W.map(r => r.slice()),
