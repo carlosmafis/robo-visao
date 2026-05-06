@@ -56,12 +56,28 @@ export function vision() {
   state.lastNear = nearest;
   if (nearest) {
     const d = dist(state.robot, nearest);
-    state.lastScores = forward(buildInput(nearest.rule.hex, d));
+    const x = buildInput(nearest.rule.hex, d);
+    const probs = forward(x);
+    state.lastScores = probs;
     state.robot.target = nearest;
-    // Usar predição da rede em vez de rule.flee hardcoded:
-    const predClass = argmax(state.lastScores);
-    const predRule = RULES[predClass];
-    state.robot.state = predRule.flee ? 'flee' : 'chase';
+
+    // O robô usa a PREDIÇÃO DA REDE para decidir a ação.
+    // Durante os primeiros ticks a rede ainda é aleatória, então para garantir
+    // que o robô não fique preso fugindo de tudo enquanto aprende, usamos uma
+    // regra de confiança: só confia na rede se a margem (diferença entre 1ª e 2ª
+    // classe) for suficiente. Caso contrário, usa a regra real como fallback.
+    const best = argmax(probs);
+    const sorted = probs.slice().sort((a, b) => b - a);
+    const confidence = sorted[0] - sorted[1]; // margem de confiança
+
+    const CONFIDENCE_THRESHOLD = 0.15; // rede precisa ter pelo menos 15% de margem
+    if (confidence >= CONFIDENCE_THRESHOLD) {
+      // Rede confiante: usa a predição para decidir flee/chase
+      state.robot.state = RULES[best].flee ? 'flee' : 'chase';
+    } else {
+      // Rede incerta: usa a regra verdadeira como professor (modo exploração)
+      state.robot.state = nearest.rule.flee ? 'flee' : 'chase';
+    }
   } else {
     state.lastScores = [];
     state.robot.state = 'idle';
@@ -114,13 +130,11 @@ export function collide() {
       const predicted = argmax(probs);
       const truth = trueClass(o.rule.hex);
       const correct = predicted === truth;
-      
-      if (correct) {
-        learn(truth, +1, x);
-      } else {
-        learn(predicted, -1, x);  // punir classe errada
-        learn(truth,     +1, x);  // reforçar classe correta
-      }
+
+      // Aprendizado corrigido:
+      // - Sempre reforça a classe verdadeira (+)
+      // - Se errou, penaliza a classe predita incorretamente (-)
+      learn(predicted, truth, x);
       recordOutcome(truth, correct);
 
       state.glitchEffect = .4;
