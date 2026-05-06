@@ -13,7 +13,7 @@ function biasedSeed(W, b) {
       ? 5
       : (ranges[0][0] + ranges[0][1]) / 2;
     const huePref = center / 360;
-    W[i][0] = 0.6 - Math.abs(huePref - 0.5) * 0.4 + (Math.random() - 0.5) * 0.1;
+    W[i][0] = 0.3 + (Math.random() - 0.5) * 0.2;
     W[i][1] = 0.4 + (Math.random() - 0.5) * 0.2;
     W[i][2] = 0.3 + (Math.random() - 0.5) * 0.2;
     W[i][3] = 0.2 + (Math.random() - 0.5) * 0.2;
