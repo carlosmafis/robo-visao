@@ -367,3 +367,40 @@ body::after{content:'';position:fixed;left:0;right:0;height:60px;pointer-events:
   position:absolute;width:1px;height:1px;padding:0;margin:-1px;
   overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
 }
+
+/* ───── AUTH OVERLAY ───── */
+#auth-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,rgba(6,11,26,.96),rgba(0,0,0,.98));
+  backdrop-filter:blur(8px);animation:view-in .4s ease}
+#auth-modal{background:linear-gradient(135deg,rgba(10,16,40,.98),rgba(6,11,26,.98));
+  border:1px solid var(--neon);border-radius:var(--radius-l);padding:32px 28px;width:min(92vw,380px);
+  box-shadow:0 0 40px rgba(0,255,163,.35),inset 0 0 20px rgba(0,255,163,.05);text-align:center}
+#auth-modal h2{font-family:'Orbitron',sans-serif;color:var(--neon);font-size:18px;letter-spacing:.15em;
+  margin-bottom:6px;text-shadow:0 0 12px var(--neon)}
+.auth-sub{color:var(--ink-mute);font-size:12px;margin-bottom:20px}
+#auth-input{width:100%;height:42px;background:rgba(0,255,163,.06);border:1px solid rgba(0,255,163,.4);
+  border-radius:var(--radius);color:var(--neon);font-family:'Share Tech Mono',monospace;font-size:16px;
+  padding:0 14px;text-align:center;letter-spacing:.05em;outline:none}
+#auth-input:focus{border-color:var(--neon);box-shadow:0 0 12px rgba(0,255,163,.3)}
+#auth-users{margin:14px 0 4px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center}
+.auth-users-lbl{display:block;width:100%;color:var(--ink-mute);font-size:10px;letter-spacing:.1em;margin-bottom:4px}
+.auth-user-chip{background:rgba(90,217,255,.08);border:1px solid rgba(90,217,255,.4);color:var(--neon2);
+  padding:5px 10px;border-radius:var(--radius);font-family:'Share Tech Mono',monospace;font-size:11px;cursor:pointer}
+.auth-user-chip:hover{background:rgba(90,217,255,.18)}
+#auth-go{margin-top:18px;width:100%;height:42px;background:linear-gradient(135deg,var(--neon),var(--neon-soft));
+  border:none;border-radius:var(--radius);color:#001a10;font-family:'Orbitron',sans-serif;font-weight:700;
+  letter-spacing:.15em;font-size:13px;cursor:pointer;box-shadow:0 0 16px rgba(0,255,163,.4)}
+#auth-go:hover{filter:brightness(1.15)}
+.auth-hint{color:var(--ink-mute);font-size:10px;margin-top:14px;opacity:.7}
+
+/* ───── USER BADGE ───── */
+.user-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--neon2);
+  margin-left:10px;padding-left:10px;border-left:1px solid rgba(90,217,255,.3)}
+.user-badge:empty{display:none}
+
+/* ───── PILOT MODE HUD ───── */
+body.pilot-mode #arena-wrap::after{content:'🎮 PILOTANDO · use ↑ ↓ ← → ou WASD';position:absolute;
+  top:10px;left:50%;transform:translateX(-50%);background:rgba(6,11,26,.85);color:var(--neon2);
+  border:1px solid var(--neon2);padding:6px 14px;border-radius:var(--radius);font-size:11px;
+  letter-spacing:.1em;z-index:5;pointer-events:none;box-shadow:0 0 12px rgba(90,217,255,.3)}
+body.pilot-mode #arena-wrap{position:relative}
