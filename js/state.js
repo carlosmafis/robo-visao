@@ -2,6 +2,7 @@
 // STATE v7 — estado global + telemetria + competidor
 // =============================================================================
 import { CONFIG, RULES } from './config.js';
+import { ukey } from './auth.js';
 
 const seedW = () => RULES.map(() => Array(4).fill(0).map(() => (Math.random() - 0.5) * 0.3));
 const seedB = () => RULES.map(() => 0);
@@ -127,8 +128,13 @@ export const state = {
   synapsePackets: [],
   teacherPhase: 0,
   packetSpawnTimer: 0,
-  best: parseInt(localStorage.getItem(CONFIG.RECORD_KEY) || '0', 10),
+  best: parseInt(localStorage.getItem(ukey(CONFIG.RECORD_KEY)) || '0', 10),
 };
+
+// Recarrega o recorde do usuário atual após login
+export function refreshUserState() {
+  state.best = parseInt(localStorage.getItem(ukey(CONFIG.RECORD_KEY)) || '0', 10);
+}
 
 export function snapshotWeights() {
   return {
@@ -142,15 +148,54 @@ export function snapshotWeights() {
 
 export function saveWeightsToLocalStorage() {
   try {
-    localStorage.setItem(CONFIG.WEIGHTS_KEY, JSON.stringify(snapshotWeights()));
+    localStorage.setItem(ukey(CONFIG.WEIGHTS_KEY), JSON.stringify(snapshotWeights()));
     return true;
   } catch { return false; }
 }
 
 export function loadWeightsFromLocalStorage() {
   try {
-    const raw = localStorage.getItem(CONFIG.WEIGHTS_KEY);
+    const raw = localStorage.getItem(ukey(CONFIG.WEIGHTS_KEY));
     if (!raw) return null;
     return JSON.parse(raw);
+  } catch { return null; }
+}
+
+// ── Progresso completo (pesos + placar + recorde) ──
+const PROGRESS_KEY = 'cn7_progress';
+
+export function saveProgress() {
+  try {
+    const payload = {
+      weights: snapshotWeights(),
+      best: state.best,
+      score: state.score,
+      collected: state.collected,
+      fled_c: state.fled_c,
+      dmg: state.dmg,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(ukey(PROGRESS_KEY), JSON.stringify(payload));
+    localStorage.setItem(ukey(CONFIG.RECORD_KEY), String(state.best));
+    return true;
+  } catch { return false; }
+}
+
+export function loadProgress() {
+  try {
+    const raw = localStorage.getItem(ukey(PROGRESS_KEY));
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data.weights?.W && data.weights?.b) {
+      NN.W = data.weights.W.map(r => r.slice());
+      NN.b = data.weights.b.slice();
+      adaptive.learnCount = data.weights.learnCount || 0;
+    }
+    if (typeof data.best === 'number') state.best = data.best;
+    if (typeof data.score === 'number') state.score = data.score;
+    if (typeof data.collected === 'number') state.collected = data.collected;
+    if (typeof data.fled_c === 'number') state.fled_c = data.fled_c;
+    if (typeof data.dmg === 'number') state.dmg = data.dmg;
+    return data;
   } catch { return null; }
 }

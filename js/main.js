@@ -2,7 +2,7 @@
 // MAIN v7 — orquestra sidebar + 4 modos + loop principal
 // =============================================================================
 import { CONFIG, CLASS_STEPS, MODES } from './config.js';
-import { state, saveWeightsToLocalStorage, competitor, resetCompetitionAll } from './state.js';
+import { state, saveWeightsToLocalStorage, competitor, resetCompetitionAll, saveProgress, loadProgress, refreshUserState } from './state.js';
 import { canvas, draw, resizeCanvas, chartResize } from './render.js';
 import { reset, vision, moveRobot, moveObjects, collide, setLogCallback } from './sim.js';
 import { updateUI, addLog, toast } from './ui.js';
@@ -10,6 +10,8 @@ import { startMusic, stopMusic, isMusicPlaying, resumeAudio } from './audio.js';
 import { initSidebar, setActiveMode } from './sidebar.js';
 import { spawnCompetitor, despawnCompetitor } from './competition.js';
 import { startWebcam, stopWebcam, importTrainedWeights, isWebcamRunning } from './webcam.js';
+import { ensureUser, getCurrentUser } from './auth.js';
+import './pilot.js';
 
 const $ = id => document.getElementById(id);
 
@@ -62,6 +64,15 @@ $('btnReset')?.addEventListener('click', doReset);
 $('btnMusic')?.addEventListener('click', toggleMusicBtn);
 $('btnFS')?.addEventListener('click', toggleFS);
 $('clearLog')?.addEventListener('click', () => { const log = $('log'); if (log) log.innerHTML = ''; });
+$('btnSaveProg')?.addEventListener('click', () => {
+  if (saveProgress()) toast(`💾 Progresso salvo para ${getCurrentUser()}`);
+  else toast('⚠️ Falha ao salvar');
+});
+$('btnLoadProg')?.addEventListener('click', () => {
+  const data = loadProgress();
+  if (data) { updateUI(); toast(`📥 Progresso de ${getCurrentUser()} carregado`); }
+  else toast('Nenhum progresso salvo ainda');
+});
 
 // Sala de aula nav
 $('nav-next')?.addEventListener('click', () => {
@@ -106,7 +117,7 @@ $('btn-vision-save')?.addEventListener('click', () => {
 
 // ── Sidebar wiring ──
 initSidebar((mode) => {
-  // Recolocar canvas no container correto
+  // Recolocar canvas no container correto (pilot reusa o container do treino)
   const target =
     mode === 'class'   ? $('class-arena-inner') :
     mode === 'compete' ? $('compete-arena-inner') :
@@ -153,9 +164,9 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key.toLowerCase() === 'r') doReset();
   else if (e.key.toLowerCase() === 's') cycleSpeed();
   else if (e.key.toLowerCase() === 'm') toggleMusicBtn();
-  else if (['1', '2', '3', '4'].includes(e.key)) {
+  else if (['1', '2', '3', '4', '5'].includes(e.key)) {
     const idx = parseInt(e.key, 10) - 1;
-    setActiveMode(MODES[idx].id);
+    if (MODES[idx]) setActiveMode(MODES[idx].id);
   }
 });
 
@@ -182,26 +193,35 @@ function mainLoop() {
   if (!state.paused && state.mode !== 'vision') {
     const baseSteps = state.mode === 'class' ? 1 : CONFIG.SPEEDS[state.speedIdx];
     for (let i = 0; i < baseSteps; i++) {
+      // No modo pilot, vision() só serve para popular o painel HSV
       if (state.tick % 4 === 0) vision();
       moveRobot(); moveObjects(); collide();
     }
     if (state.mode === 'class') autoAdvanceStep();
     if (state.tick % 3 === 0) updateUI();
-    autoSaveWeights();
+    if (state.mode !== 'pilot') autoSaveWeights();
   }
   if (state.mode !== 'vision') draw();
   requestAnimationFrame(mainLoop);
 }
 
 // ── Boot ──
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  await ensureUser();
+  refreshUserState();
   resizeCanvas();
   chartResize();
   doReset();
+  // Restaura pesos + recorde DEPOIS do reset
+  const prog = loadProgress();
+  if (prog) {
+    toast(`👋 Bem-vindo de volta, ${getCurrentUser()}! Pesos restaurados.`);
+  } else {
+    toast(`🚀 Combate Neural ${CONFIG.VERSION} — Olá, ${getCurrentUser()}! 1-5 alterna modos`);
+  }
   setActiveMode('train');
   updateUI();
   ['click', 'keydown', 'touchstart'].forEach(ev =>
     document.addEventListener(ev, resumeAudio, { once: true, passive: true }));
   requestAnimationFrame(mainLoop);
-  toast(`🚀 Combate Neural ${CONFIG.VERSION} — Use a sidebar para alternar modos · 1-4 atalhos`);
 });

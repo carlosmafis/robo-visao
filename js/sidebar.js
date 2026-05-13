@@ -38,10 +38,12 @@ export function setActiveMode(mode) {
     el.classList.toggle('active', el.dataset.mode === mode);
     el.setAttribute('aria-current', el.dataset.mode === mode ? 'page' : 'false');
   });
-  // Show only the selected view
+  // Show only the selected view (pilot reusa o layout do treino)
+  const viewMode = mode === 'pilot' ? 'train' : mode;
   document.querySelectorAll('.view').forEach(v => {
-    v.hidden = v.dataset.view !== mode;
+    v.hidden = v.dataset.view !== viewMode;
   });
+  document.body.classList.toggle('pilot-mode', mode === 'pilot');
   // Update title
   const m = MODES.find(x => x.id === mode);
   const titleEl = $('mode-title');

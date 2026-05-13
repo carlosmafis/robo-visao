@@ -7,6 +7,7 @@ import { burst, addFloat, resizeCanvas, canvas } from './render.js';
 import { playBeep } from './audio.js';
 import { buildInput, forward, learn, argmax, trueClass } from './neural.js';
 import { stepCompetitor, checkCompetitorCollisions } from './competition.js';
+import { pilotDriveRobot } from './pilot.js';
 
 const { ROBOT_R, OBJ_R, DETECT_R } = CONFIG;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -86,6 +87,10 @@ export function vision() {
 }
 
 export function moveRobot() {
+  if (state.mode === 'pilot') {
+    pilotDriveRobot();
+    return;
+  }
   const slowMode = state.mode === 'class';
   const MV = slowMode ? 2.2 : 3.8, AC = slowMode ? 0.22 : 0.35, FR = 0.90;
   const r = state.robot;
