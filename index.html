@@ -56,8 +56,11 @@
       <h1 class="sr-only">COMBATE NEURAL</h1>
       <span id="version-badge">v7.1</span>
       <span id="mode-title" class="mode-title">Arena de Treino</span>
+      <span id="user-badge" class="user-badge"></span>
     </div>
     <nav id="topbar-right" aria-label="Controles">
+      <button class="icon-btn" id="btnSaveProg" type="button"><span aria-hidden="true">💾</span> SALVAR</button>
+      <button class="icon-btn" id="btnLoadProg" type="button"><span aria-hidden="true">📥</span> CARREGAR</button>
       <button class="icon-btn" id="btnPlay" type="button"><span aria-hidden="true">⏸</span> PAUSAR</button>
       <button class="icon-btn" id="btnSpeed" type="button"><span aria-hidden="true">⚡</span> NORMAL</button>
       <button class="icon-btn" id="btnReset" type="button"><span aria-hidden="true">↺</span> RESET</button>
@@ -90,6 +93,11 @@
           <span class="sb-icon">📷</span>
           <span class="sb-label">Visão Real</span>
           <span class="sb-key">4</span>
+        </li>
+        <li class="sb-item" data-mode="pilot" role="menuitem" tabindex="0">
+          <span class="sb-icon">🎮</span>
+          <span class="sb-label">Pilotar</span>
+          <span class="sb-key">5</span>
         </li>
       </ul>
       <div class="sb-footer">
