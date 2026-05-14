@@ -66,4 +66,6 @@ export const MODES = [
   { id: 'class',   icon: '🎓', label: 'Sala de Aula', title: 'Sala de Aula — IA Adaptativa' },
   { id: 'compete', icon: '⚔️', label: 'Competição',   title: 'Modo Competição — A vs B' },
   { id: 'vision',  icon: '📷', label: 'Visão Real',   title: 'Visão Real — Webcam' },
+  { id: 'pilot',   icon: '🎮', label: 'Pilotar',      title: 'Modo Pilotar — Setas do Teclado' },
 ];
+
