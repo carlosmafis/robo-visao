@@ -399,8 +399,45 @@ body::after{content:'';position:fixed;left:0;right:0;height:60px;pointer-events:
 .user-badge:empty{display:none}
 
 /* ───── PILOT MODE HUD ───── */
-body.pilot-mode #arena-wrap::after{content:'🎮 PILOTANDO · use ↑ ↓ ← → ou WASD';position:absolute;
+body.pilot-mode #arena-wrap::after{content:'🎮 PILOTANDO · ↑ ↓ ← → · WASD · joystick';position:absolute;
   top:10px;left:50%;transform:translateX(-50%);background:rgba(6,11,26,.85);color:var(--neon2);
   border:1px solid var(--neon2);padding:6px 14px;border-radius:var(--radius);font-size:11px;
   letter-spacing:.1em;z-index:5;pointer-events:none;box-shadow:0 0 12px rgba(90,217,255,.3)}
 body.pilot-mode #arena-wrap{position:relative}
+
+/* ───── JOYSTICK VIRTUAL (mobile/touch, modo pilotar) ───── */
+#pilot-joystick{display:none}
+body.pilot-mode #pilot-joystick{
+  display:block;position:absolute;left:18px;bottom:18px;z-index:6;
+  width:140px;height:140px;touch-action:none;user-select:none;-webkit-user-select:none;
+}
+#pilot-joy-base{
+  position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at center,rgba(0,255,163,.18),rgba(6,11,26,.45) 70%);
+  border:2px solid rgba(0,255,163,.55);
+  box-shadow:0 0 18px rgba(0,255,163,.35),inset 0 0 22px rgba(0,255,163,.18);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+#pilot-joy-stick{
+  position:absolute;left:50%;top:50%;width:60px;height:60px;border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 35% 30%,rgba(90,217,255,.95),rgba(0,255,163,.7) 70%);
+  border:2px solid rgba(230,255,245,.85);
+  box-shadow:0 0 18px rgba(90,217,255,.7),inset 0 0 10px rgba(255,255,255,.25);
+  transition:transform .05s linear;pointer-events:none;
+}
+#pilot-joystick.active #pilot-joy-base{border-color:var(--neon2);box-shadow:0 0 26px rgba(90,217,255,.55)}
+
+/* Esconde o joystick em telas grandes (desktop usa teclado) */
+@media (hover:hover) and (pointer:fine){
+  body.pilot-mode #pilot-joystick{display:none}
+}
+
+/* No mobile (modo pilotar): arena ocupa a tela inteira, esconde painel */
+@media (max-width:640px){
+  body.pilot-mode .view-train{flex-direction:column}
+  body.pilot-mode #arena-wrap{height:auto;flex:1;min-height:0}
+  body.pilot-mode #panel{display:none}
+  body.pilot-mode #pilot-joystick{width:160px;height:160px;left:14px;bottom:14px}
+  body.pilot-mode #pilot-joy-stick{width:70px;height:70px}
+}
