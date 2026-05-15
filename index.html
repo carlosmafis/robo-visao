@@ -113,6 +113,12 @@
       <section class="view view-train" data-view="train">
         <div id="arena-wrap" aria-label="Arena de simulação">
           <canvas id="arena" aria-label="Simulação ao vivo"></canvas>
+          <!-- HUD do modo Pilotar (placar overlay) -->
+          <div id="pilot-hud" aria-hidden="true">
+            <div class="ph-row ph-user-row"><span class="ph-lbl">👤</span><span id="ph-user">—</span></div>
+            <div class="ph-row"><span class="ph-lbl">PONTOS</span><span class="ph-val" id="ph-pts">0</span></div>
+            <div class="ph-row ph-best-row"><span class="ph-lbl">🏆 RECORDE</span><span class="ph-val" id="ph-best">0</span></div>
+          </div>
           <!-- Joystick virtual (modo Pilotar em mobile/touch) -->
           <div id="pilot-joystick" aria-hidden="true">
             <div id="pilot-joy-base">
