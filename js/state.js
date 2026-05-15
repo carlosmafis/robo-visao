@@ -129,11 +129,13 @@ export const state = {
   teacherPhase: 0,
   packetSpawnTimer: 0,
   best: parseInt(localStorage.getItem(ukey(CONFIG.RECORD_KEY)) || '0', 10),
+  pilotBest: parseInt(localStorage.getItem(ukey(CONFIG.PILOT_RECORD_KEY)) || '0', 10),
 };
 
 // Recarrega o recorde do usuário atual após login
 export function refreshUserState() {
   state.best = parseInt(localStorage.getItem(ukey(CONFIG.RECORD_KEY)) || '0', 10);
+  state.pilotBest = parseInt(localStorage.getItem(ukey(CONFIG.PILOT_RECORD_KEY)) || '0', 10);
 }
 
 export function snapshotWeights() {

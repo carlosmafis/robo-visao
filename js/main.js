@@ -134,6 +134,11 @@ initSidebar((mode) => {
   }
   if (mode !== 'compete' && competitor.enabled) despawnCompetitor();
 
+  // Modo Pilotar: cada sessão começa com placar zerado (recorde fica salvo separado)
+  if (mode === 'pilot') {
+    reset();
+  }
+
   // Webcam
   if (mode === 'vision') {
     // não inicia auto — usuário aciona

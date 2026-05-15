@@ -17,6 +17,7 @@ export const CONFIG = {
   WEIGHT_CLAMP: [-1.5, 1.5],
   ADAPT_CLAMP: [0.5, 1.5],
   RECORD_KEY: 'cn7_highscore',
+  PILOT_RECORD_KEY: 'cn7_pilot_highscore', // recorde exclusivo do modo Pilotar (por apelido)
   WEIGHTS_KEY: 'cn7_weights',          // pesos exportáveis para webcam
   TELEMETRY_MAX: 60,                    // pontos do gráfico de acurácia
   COMPETITOR_LR: 0.12,                  // robô B aprende mais agressivo
@@ -66,6 +67,5 @@ export const MODES = [
   { id: 'class',   icon: '🎓', label: 'Sala de Aula', title: 'Sala de Aula — IA Adaptativa' },
   { id: 'compete', icon: '⚔️', label: 'Competição',   title: 'Modo Competição — A vs B' },
   { id: 'vision',  icon: '📷', label: 'Visão Real',   title: 'Visão Real — Webcam' },
-  { id: 'pilot',   icon: '🎮', label: 'Pilotar',      title: 'Modo Pilotar — Setas do Teclado' },
+  { id: 'pilot',   icon: '🎮', label: 'Pilotar',      title: 'Modo Jogo — Pilotar com as Setas' },
 ];
-

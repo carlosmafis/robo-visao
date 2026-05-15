@@ -2,6 +2,7 @@
 // UI v7 — painel principal + sala de aula (com Math Live integrado) + telemetria
 // =============================================================================
 import { CONFIG, RULES, CLASS_STEPS } from './config.js';
+import { ukey, getCurrentUser } from './auth.js';
 import { state, adaptive, NN, telemetry, competitor } from './state.js';
 import { rgbToHsv, margin } from './neural.js';
 import { dist, fmt, drawChart, drawCompeteChart } from './render.js';
@@ -31,6 +32,8 @@ const els = {
   compScoreA: $('comp-score-a'), compScoreB: $('comp-score-b'),
   compAccA: $('comp-acc-a'), compAccB: $('comp-acc-b'),
   compHitsA: $('comp-hits-a'), compHitsB: $('comp-hits-b'),
+  // Pilot HUD
+  phUser: $('ph-user'), phPts: $('ph-pts'), phBest: $('ph-best'),
 };
 
 export function addLog(msg, color) {
@@ -176,11 +179,23 @@ export function updateUI() {
   els.fug.textContent = state.fled_c;
   els.dmg.textContent = state.dmg;
   els.learn.textContent = adaptive.learnCount;
-  if (state.score > state.best) {
-    state.best = state.score;
-    localStorage.setItem(CONFIG.RECORD_KEY, String(state.best));
+  if (state.mode === 'pilot') {
+    // Recorde exclusivo do modo Pilotar (por apelido)
+    if (state.score > state.pilotBest) {
+      state.pilotBest = state.score;
+      localStorage.setItem(ukey(CONFIG.PILOT_RECORD_KEY), String(state.pilotBest));
+    }
+    els.best.textContent = state.pilotBest;
+    if (els.phUser) els.phUser.textContent = getCurrentUser() || '—';
+    if (els.phPts) els.phPts.textContent = state.score;
+    if (els.phBest) els.phBest.textContent = state.pilotBest;
+  } else {
+    if (state.score > state.best) {
+      state.best = state.score;
+      localStorage.setItem(ukey(CONFIG.RECORD_KEY), String(state.best));
+    }
+    els.best.textContent = state.best;
   }
-  els.best.textContent = state.best;
   adaptive.weights.forEach((w, i) => { if (els.w[i]) els.w[i].textContent = w.toFixed(2); });
 
   if (state.lastNear && els.nearInfo) {
